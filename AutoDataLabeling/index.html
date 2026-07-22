@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js 赛道数据可视化预览</title>
+    <link rel="stylesheet" href="./styles/main.css">
+    <script src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+
+<body>
+    <div id="home-container">
+        <div class="home-card">
+            <div class="home-logo">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h1 class="home-title">Three.js 赛道数据可视化预览系统</h1>
+            <p class="home-subtitle">请导入场景 ZIP 压缩包（包含 objects.json 及 models/ 文件夹中的 3D 模型）</p>
+            
+            <div id="dropzone" class="dropzone">
+                <div class="dropzone-content">
+                    <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="#9a9a9a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <polyline points="17 8 12 3 7 8" stroke="#9a9a9a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="12" y1="3" x2="12" y2="15" stroke="#9a9a9a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <p class="dropzone-text">将场景 ZIP 压缩包拖到这里，或者 <span class="browse-link">点击浏览文件</span></p>
+                    <span class="file-tip">支持的格式: .zip | 可拖入测试压缩包</span>
+                </div>
+                <input type="file" id="zip-file-input" accept=".zip" style="display: none;">
+            </div>
+
+            <div id="import-details" style="display: none;">
+                <div class="file-details-card">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" fill="rgba(0, 255, 170, 0.1)" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <polyline points="14 2 14 8 20 8" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="file-meta">
+                        <span id="selected-file-name" class="file-name">--</span>
+                        <span id="selected-file-size" class="file-size">--</span>
+                    </div>
+                </div>
+                <button type="button" id="start-import-btn" class="import-button">导入并解析场景</button>
+            </div>
+
+            <div id="home-status" class="home-status" style="display: none;"></div>
+
+            <div id="home-loading" class="home-loading" style="display: none;">
+                <div class="spinner"></div>
+                <span id="loading-text">正在解压并读取场景资源...</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-shell">
+        <aside id="left-panel" class="side-panel">
+            <h3>核心模式切换</h3>
+            <label class="master-switch" style="margin-bottom: 8px;">
+                <input type="checkbox" id="master-mask-mode">
+                <span>开启标注掩码模式</span>
+            </label>
+
+            <div class="field-block full-span" style="margin-bottom: 8px;">
+                <label for="param-lap-filter" style="font-size: 12px; color: var(--panel-subtle); display: block; margin-bottom: 4px;">圈数过滤显示</label>
+                <select id="param-lap-filter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #3b3b3b; background: var(--panel-input); color: var(--panel-text);">
+                    <option value="all">显示所有圈数</option>
+                    <option value="0">第一圈 (Lap 0)</option>
+                    <option value="1">第二圈 (Lap 1)</option>
+                    <option value="2">第三圈 (Lap 2)</option>
+                    <option value="3">第四圈 (Lap 3)</option>
+                    <option value="4">第五圈 (Lap 4)</option>
+                </select>
+            </div>
+
+            <h3>高级标注微调</h3>
+            <div class="slider-group">
+                <div class="slider-label"><span>赛道模糊半径 (Blur):</span><span id="val-blur">4.5</span>px</div>
+                <input type="range" id="param-blur" min="0.5" max="20.0" step="0.5" value="4.5">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>边界偏移 (Edge Offset):</span><span id="val-threshold">-65</span></div>
+                <input type="range" id="param-threshold" min="-80" max="32" step="1" value="-65">
+            </div>
+
+            <h3>底图物理校准</h3>
+            <div class="slider-group">
+                <div class="slider-label"><span>底图物理宽度 (Width):</span><span id="val-width">4.15</span>m</div>
+                <input type="range" id="param-width" min="1.0" max="10.0" step="0.05" value="4.15">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>底图物理高度 (Height):</span><span id="val-height">5.10</span>m</div>
+                <input type="range" id="param-height" min="1.0" max="10.0" step="0.05" value="5.10">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>中心位置 X (CenterX):</span><span id="val-cx">2.10</span></div>
+                <input type="range" id="param-cx" min="-2.0" max="6.0" step="0.02" value="2.10">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span>中心位置 Z (CenterZ):</span><span id="val-cz">2.44</span></div>
+                <input type="range" id="param-cz" min="-2.0" max="6.0" step="0.02" value="2.44">
+            </div>
+
+            <h3>模型独立可见性</h3>
+            <div id="dynamic-layers"></div>
+        </aside>
+
+        <main id="viewport-shell">
+            <div id="viewport-canvas"></div>
+        </main>
+
+        <aside id="right-panel" class="side-panel">
+            <section class="panel-card">
+                <h3>导出预览</h3>
+                <div class="segmented" id="preview-mode-switch">
+                    <button type="button" class="active" data-preview-mode="rgb">RGB</button>
+                    <button type="button" data-preview-mode="detections">Detections</button>
+                    <button type="button" data-preview-mode="semantic">Semantic</button>
+                    <button type="button" data-preview-mode="semantic_road_covered">Semantic (Covered)</button>
+                    <button type="button" data-preview-mode="instance">Instance</button>
+                </div>
+                <div id="export-preview-frame">
+                    <div id="export-preview-mount"></div>
+                    <canvas id="export-preview-overlay"></canvas>
+                </div>
+                <div class="button-row">
+                    <button type="button" id="sync-main-view">同步主视角</button>
+                    <button type="button" id="reset-export-camera">重置相机</button>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h3>轨迹导入</h3>
+                <input id="pose-track-file" type="file" accept=".txt,text/plain" hidden>
+                <div class="button-row">
+                    <button type="button" id="pose-track-import">导入轨迹文件</button>
+                    <button type="button" id="pose-track-clear">清空轨迹</button>
+                </div>
+                <div id="pose-track-status" class="helper-text">未导入轨迹</div>
+                <div class="slider-group">
+                    <div class="slider-label"><span>轨迹进度</span><span id="pose-track-frame-label">0 / 0</span></div>
+                    <input type="range" id="pose-track-progress" min="0" max="0" step="1" value="0" disabled>
+                </div>
+                <div id="pose-track-frame-info" class="helper-text">X: -- m | Z: -- m | Yaw: -- deg</div>
+            </section>
+
+            <section class="panel-card">
+                <h3>相机设置</h3>
+                <div class="field-grid">
+                    <div class="field-block"><label for="export-cam-px">Position X</label><input id="export-cam-px" type="number" step="0.01"></div>
+                    <div class="field-block"><label for="export-cam-py">Position Y</label><input id="export-cam-py" type="number" step="0.01"></div>
+                    <div class="field-block"><label for="export-cam-pz">Position Z</label><input id="export-cam-pz" type="number" step="0.01"></div>
+                    <div class="field-block"><label for="export-cam-fov">FOV</label><input id="export-cam-fov" type="number" step="0.1" min="10" max="120"></div>
+                    <div class="field-block"><label for="export-rot-x">Euler X</label><input id="export-rot-x" type="number" step="0.1"></div>
+                    <div class="field-block"><label for="export-rot-y">Euler Y</label><input id="export-rot-y" type="number" step="0.1"></div>
+                    <div class="field-block"><label for="export-rot-z">Euler Z</label><input id="export-rot-z" type="number" step="0.1"></div>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h3>画面设置</h3>
+                <div class="field-grid">
+                    <div class="field-block full-span">
+                        <label for="export-aspect-preset">比例预设</label>
+                        <select id="export-aspect-preset">
+                            <option value="1:1">1:1</option>
+                            <option value="4:3">4:3</option>
+                            <option value="16:9">16:9</option>
+                            <option value="9:16">9:16</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="field-block"><label for="export-width">Width</label><input id="export-width" type="number" step="1" min="0"></div>
+                    <div class="field-block"><label for="export-height">Height</label><input id="export-height" type="number" step="1" min="0"></div>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h3>标签设置</h3>
+                <div class="field-grid">
+                    <div class="field-block full-span">
+                        <label for="export-sample-name">Sample Name</label>
+                        <input id="export-sample-name" type="text" value="sample_0001">
+                    </div>
+                </div>
+                <div class="helper-text">语义标签可编辑名称，ID 固定。实例名称首版自动生成。</div>
+                <div id="semantic-label-editor"></div>
+                <div class="field-block full-span" style="margin-top: 10px;">
+                    <label for="instance-labels">Instance Naming</label>
+                    <textarea id="instance-labels" readonly></textarea>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h3>导出</h3>
+                <div id="export-status" data-state="idle">正在加载场景资源...</div>
+                <div class="button-row">
+                    <button type="button" id="export-zip-button" class="primary-button" disabled>导出当前样本 ZIP</button>
+                    <button type="button" id="export-trajectory-zip-button" class="primary-button" disabled>导出整段轨迹 ZIP</button>
+                </div>
+                <div class="button-row" style="margin-top: 10px;">
+                    <button type="button" id="export-coco-zip-button" class="primary-button" disabled>导出 COCO 检测 ZIP</button>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+</body>
+
+</html>
