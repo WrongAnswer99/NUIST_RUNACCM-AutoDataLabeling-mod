@@ -129,16 +129,37 @@
 
             <section class="workflow-panel" data-workflow-page="camera">
                 <h3>相机</h3>
-                <div class="segmented" id="preview-mode-switch">
-                    <button type="button" class="active" data-preview-mode="rgb">RGB</button>
-                    <button type="button" data-preview-mode="detections">检测</button>
-                    <button type="button" data-preview-mode="semantic">语义</button>
-                    <button type="button" data-preview-mode="semantic_road_covered">覆盖</button>
-                    <button type="button" data-preview-mode="instance">实例</button>
-                </div>
-                <div class="button-row">
-                    <button type="button" id="sync-main-view">同步主视角</button>
-                    <button type="button" id="reset-export-camera">重置相机</button>
+                <div class="camera-tool-stack">
+                    <div class="camera-mode-group">
+                        <div class="segmented" id="preview-mode-switch">
+                            <button type="button" class="active" data-preview-mode="rgb">
+                                <span class="mode-label">RGB</span>
+                                <span class="mode-description">查看真实渲染画面</span>
+                            </button>
+                            <button type="button" data-preview-mode="detections">
+                                <span class="mode-label">检测</span>
+                                <span class="mode-description">显示目标检测框</span>
+                            </button>
+                            <button type="button" data-preview-mode="semantic">
+                                <span class="mode-label">语义</span>
+                                <span class="mode-description">按类别输出颜色</span>
+                            </button>
+                            <button type="button" data-preview-mode="semantic_road_covered">
+                                <span class="mode-label">覆盖</span>
+                                <span class="mode-description">检查道路遮罩覆盖</span>
+                            </button>
+                            <button type="button" data-preview-mode="instance">
+                                <span class="mode-label">实例</span>
+                                <span class="mode-description">按独立实例区分</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="camera-action-group">
+                        <div class="button-row">
+                            <button type="button" id="sync-main-view">同步主视角</button>
+                            <button type="button" id="reset-export-camera">重置相机</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -175,12 +196,10 @@
             </section>
 
             <section class="workflow-panel" data-workflow-page="annotate">
-                <h3>标签设置</h3>
-                <div class="helper-text">语义标签可编辑名称，ID 固定。实例名称首版自动生成。</div>
-                <div id="semantic-label-editor"></div>
-                <div class="field-block full-span">
-                    <label for="instance-labels">Instance Naming</label>
-                    <textarea id="instance-labels" readonly></textarea>
+                <h3>标注检查器</h3>
+                <div class="panel-card">
+                    <div class="section-title">显示状态</div>
+                    <p class="helper-text">在左侧开启掩码、过滤圈数或切换模型可见性后，主视窗会同步显示标注结果。</p>
                 </div>
                 <details class="advanced-group">
                     <summary>高级标注微调</summary>
@@ -201,6 +220,15 @@
                     <div id="export-preview-mount"></div>
                     <canvas id="export-preview-overlay"></canvas>
                 </div>
+                <details class="advanced-group label-settings-group">
+                    <summary>标签设置</summary>
+                    <div class="helper-text">语义标签可在相机预览前确认名称；ID 固定，实例名称自动生成。</div>
+                    <div id="semantic-label-editor"></div>
+                    <div class="field-block full-span">
+                        <label for="instance-labels">Instance Naming</label>
+                        <textarea id="instance-labels" readonly></textarea>
+                    </div>
+                </details>
                 <h3>相机设置</h3>
                 <div class="field-grid">
                     <div class="field-block"><label for="export-cam-px">Position X</label><input id="export-cam-px" type="number" step="0.01"></div>

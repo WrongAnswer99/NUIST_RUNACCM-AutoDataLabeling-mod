@@ -4,6 +4,7 @@ import { createExportModule } from './export.js';
 import { createUIModule } from './ui.js';
 import { createPoseTrackModule } from './pose-track.js';
 import { buildZipBlobUrls, findObjectsJsonEntry } from './zip-import.js';
+import { tryLoadDefaultPoseTrack } from './default-track.js';
 
 const mounts = {
     viewportShell: document.getElementById('viewport-shell'),
@@ -35,6 +36,7 @@ fetch('./map.png')
     });
 
 let uiApi = null;
+let defaultPoseTrackAttempted = false;
 
 const sceneApi = createSceneModule(appState, mounts, {
     onSemanticRegistryChanged: () => {
@@ -63,6 +65,7 @@ const sceneApi = createSceneModule(appState, mounts, {
         // Start Three.js loop and resize once UI is active
         sceneApi.animate();
         sceneApi.onResize();
+        loadDefaultPoseTrackOnce();
     },
     onResourceStateChanged: () => {
         uiApi?.refreshAvailability();
@@ -77,6 +80,20 @@ const exportApi = createExportModule(appState, sceneApi, {
 uiApi = createUIModule(appState, sceneApi, exportApi, mounts);
 appState.poseTrack.api = createPoseTrackModule(appState, sceneApi, uiApi);
 uiApi.initialize();
+
+async function loadDefaultPoseTrackOnce() {
+    if (defaultPoseTrackAttempted || appState.poseTrack.loaded) return;
+    defaultPoseTrackAttempted = true;
+
+    const loaded = await tryLoadDefaultPoseTrack({
+        fetchTrack: (path) => fetch(path),
+        loadFramesFromText: appState.poseTrack.api.loadFramesFromText
+    });
+
+    if (loaded) {
+        uiApi?.refreshAvailability();
+    }
+}
 
 // Setup landing page interactivity & ZIP loading logic
 const dropzone = document.getElementById('dropzone');

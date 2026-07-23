@@ -10,6 +10,11 @@ function sectionForWorkflow(page) {
     return html.match(pattern)?.[0] || '';
 }
 
+function sectionsForWorkflow(page) {
+    const pattern = new RegExp(`<section[^>]+data-workflow-page="${page}"[\\s\\S]*?</section>`, 'gi');
+    return [...html.matchAll(pattern)].map((match) => match[0]);
+}
+
 test('workflow page bar omits the dedicated track page', () => {
     assert.equal(html.includes('class="app-topbar"'), false);
     assert.equal(html.includes('data-workflow-target="track"'), false);
@@ -33,4 +38,26 @@ test('trajectory import controls live in the resources page and timeline is pers
     assert.doesNotMatch(timelineSection, /data-workflow-page=/);
     assert.doesNotMatch(css, /\.workflow-timeline\s*\{[\s\S]*?display:\s*none/i);
     assert.doesNotMatch(css, /\.workflow-timeline\.active/);
+});
+
+test('camera workflow uses compact grouped controls', () => {
+    const cameraSection = sectionForWorkflow('camera');
+
+    assert.match(cameraSection, /class="camera-tool-stack"/);
+    assert.match(cameraSection, /class="camera-mode-group"/);
+    assert.match(cameraSection, /class="camera-action-group"/);
+    assert.match(cameraSection, /class="mode-description"/);
+    assert.match(css, /\.camera-mode-group\s+\.segmented/);
+    assert.match(css, /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+    assert.match(css, /\.camera-action-group\s+\.button-row/);
+});
+
+test('label editor is configured from the camera workflow', () => {
+    const cameraSections = sectionsForWorkflow('camera').join('\n');
+    const annotateSections = sectionsForWorkflow('annotate').join('\n');
+
+    assert.match(cameraSections, /id="semantic-label-editor"/);
+    assert.match(cameraSections, /id="instance-labels"/);
+    assert.doesNotMatch(annotateSections, /id="semantic-label-editor"/);
+    assert.doesNotMatch(annotateSections, /id="instance-labels"/);
 });

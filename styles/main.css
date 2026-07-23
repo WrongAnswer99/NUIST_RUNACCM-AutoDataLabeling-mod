@@ -229,7 +229,7 @@
 	            border: 1px solid #2f2f2f;
 	            border-radius: 7px;
 	            background: rgba(255, 255, 255, 0.03);
-	            overflow: hidden;
+	            overflow: visible;
 	        }
 
 	        .advanced-group summary {
@@ -342,6 +342,80 @@
 
 	        .panel-card .button-row + .status-pill {
 	            margin-top: 10px;
+	        }
+
+	        .camera-tool-stack {
+	            display: grid;
+	            gap: 10px;
+	        }
+
+	        .camera-mode-group,
+	        .camera-action-group {
+	            padding: 8px;
+	            border: 1px solid #303030;
+	            border-radius: 7px;
+	            background: rgba(255, 255, 255, 0.025);
+	        }
+
+	        .camera-mode-group .segmented {
+	            grid-template-columns: minmax(0, 1fr);
+	            gap: 6px;
+	        }
+
+	        .camera-mode-group .segmented button,
+	        .camera-action-group .button-row button {
+	            min-height: 38px;
+	            padding: 8px 10px;
+	            border-radius: 5px;
+	            font-size: 12px;
+	            font-weight: 700;
+	        }
+
+	        .camera-mode-group .segmented button {
+	            display: grid;
+	            grid-template-columns: 52px minmax(0, 1fr);
+	            align-items: center;
+	            gap: 10px;
+	            text-align: left;
+	            white-space: normal;
+	        }
+
+	        .mode-label {
+	            color: var(--panel-text);
+	        }
+
+	        .mode-description {
+	            color: var(--panel-subtle);
+	            font-size: 11px;
+	            font-weight: 500;
+	            line-height: 1.35;
+	        }
+
+	        .camera-mode-group .segmented button.active {
+	            background: rgba(0, 255, 170, 0.12);
+	            box-shadow: inset 3px 0 0 var(--panel-accent);
+	        }
+
+	        .camera-mode-group .segmented button.active .mode-label,
+	        .camera-mode-group .segmented button.active .mode-description {
+	            color: var(--panel-accent);
+	        }
+
+	        .camera-action-group .button-row {
+	            gap: 8px;
+	        }
+
+	        .label-settings-group {
+	            margin-top: 2px;
+	        }
+
+	        .label-settings-group .helper-text {
+	            padding: 0 12px 10px;
+	        }
+
+	        .label-settings-group #semantic-label-editor,
+	        .label-settings-group .field-block {
+	            margin: 0 10px 10px;
 	        }
 
 	        .workflow-timeline {
