@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { arToSceneVector3 } from './state.js';
+import { computeLapsForFrames } from './pose-track-helpers.js';
 
 function parsePoseLine(line) {
     const match = line.match(/^\[(.+?)\]\s+x_mm=([-+]?\d*\.?\d+)\s+y_mm=([-+]?\d*\.?\d+)\s+yaw_deg=([-+]?\d*\.?\d+)/);
@@ -24,45 +25,6 @@ function normalizeDegrees(degrees) {
 
 function mapPoseYawToSceneYawDeg(yawDeg) {
     return normalizeDegrees(-yawDeg);
-}
-
-function computeLapsForFrames(frames) {
-    if (!frames || frames.length === 0) return;
-
-    let minX = Infinity, maxX = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    frames.forEach((f) => {
-        if (f.xMeters < minX) minX = f.xMeters;
-        if (f.xMeters > maxX) maxX = f.xMeters;
-        if (f.zMeters < minZ) minZ = f.zMeters;
-        if (f.zMeters > maxZ) maxZ = f.zMeters;
-    });
-
-    const cx = (minX + maxX) / 2;
-    const cz = (minZ + maxZ) / 2;
-
-    let totalAngle = 0;
-    let lastAngle = Math.atan2(frames[0].zMeters - cz, frames[0].xMeters - cx);
-
-    frames[0].lap = 0;
-
-    for (let i = 1; i < frames.length; i++) {
-        const frame = frames[i];
-        const angle = Math.atan2(frame.zMeters - cz, frame.xMeters - cx);
-        let diff = angle - lastAngle;
-
-        if (diff > Math.PI) {
-            diff -= 2 * Math.PI;
-        } else if (diff < -Math.PI) {
-            diff += 2 * Math.PI;
-        }
-
-        totalAngle += diff;
-        lastAngle = angle;
-
-        const lapFloat = Math.abs(totalAngle) / (2 * Math.PI);
-        frame.lap = Math.floor(lapFloat);
-    }
 }
 
 export function createPoseTrackModule(appState, sceneApi, uiApi) {
@@ -132,7 +94,7 @@ export function createPoseTrackModule(appState, sceneApi, uiApi) {
             throw new Error('轨迹文件中没有可解析的位姿数据');
         }
 
-        computeLapsForFrames(frames); // Detect laps on import
+        computeLapsForFrames(frames, sceneState.lapCourse);
 
         poseTrack.fileName = fileName;
         poseTrack.frames = frames;

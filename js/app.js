@@ -3,6 +3,7 @@ import { createSceneModule } from './scene.js';
 import { createExportModule } from './export.js';
 import { createUIModule } from './ui.js';
 import { createPoseTrackModule } from './pose-track.js';
+import { buildZipBlobUrls, findObjectsJsonEntry } from './zip-import.js';
 
 const mounts = {
     viewportShell: document.getElementById('viewport-shell'),
@@ -159,12 +160,12 @@ startImportBtn.addEventListener('click', async () => {
     try {
         const zip = await window.JSZip.loadAsync(selectedFile);
         
-        const objectsJsonFile = zip.file('objects.json');
-        if (!objectsJsonFile) {
+        const objectsJsonEntry = findObjectsJsonEntry(zip.files);
+        if (!objectsJsonEntry) {
             throw new Error('未在压缩包中找到 objects.json 文件！');
         }
         
-        const objectsText = await objectsJsonFile.async('string');
+        const objectsText = await objectsJsonEntry.file.async('string');
         let objectsData;
         try {
             objectsData = JSON.parse(objectsText);
@@ -172,25 +173,10 @@ startImportBtn.addEventListener('click', async () => {
             throw new Error('objects.json 格式错误，解析失败：' + err.message);
         }
         
-        const zipBlobUrls = {};
-        
-        for (const [filename, fileEntry] of Object.entries(zip.files)) {
-            if (fileEntry.dir) continue;
-            
-            if (filename.endsWith('.glb')) {
-                const blob = await fileEntry.async('blob');
-                const url = URL.createObjectURL(blob);
-                zipBlobUrls[filename] = url;
-                const baseName = filename.substring(filename.lastIndexOf('/') + 1);
-                zipBlobUrls[baseName] = url;
-            } else if (filename.endsWith('.png') && (filename.toLowerCase().includes('map'))) {
-                const blob = await fileEntry.async('blob');
-                const url = URL.createObjectURL(blob);
-                zipBlobUrls[filename] = url;
-                const baseName = filename.substring(filename.lastIndexOf('/') + 1);
-                zipBlobUrls[baseName] = url;
-            }
-        }
+        const zipBlobUrls = await buildZipBlobUrls(zip.files, {
+            sceneRoot: objectsJsonEntry.sceneRoot,
+            createObjectURL: (blob) => URL.createObjectURL(blob)
+        });
         
         sceneApi.loadResources(zipBlobUrls, objectsData);
         

@@ -91,7 +91,8 @@ export function createAppState() {
             maskTexture: null,
             groundMesh: null,
             originalMapMaterial: null,
-            trackRecord: null
+            trackRecord: null,
+            lapCourse: null
         },
         exportState: {
             previewMode: 'rgb',

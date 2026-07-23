@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MAP_KEY, MASK_DOWNSAMPLE_RATIO, MASK_MIN_DOWNSAMPLED_SIZE, MASK_PALETTE, arToSceneVector3 } from './state.js';
+import { extractLapCourseFromObjects } from './pose-track-helpers.js';
+import { resolveZipBlobUrl } from './zip-import.js';
 import {
     extractAlphaMaskFromImageData,
     extractConnectedComponentsFromMask
@@ -1023,6 +1025,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         sceneState.resourcesReady = false;
         sceneState.pendingAssetLoads = 0;
         sceneState.currentLapFilter = 'all';
+        sceneState.lapCourse = null;
 
         // Reset UI filter dropdown value to default 'all'
         const lapFilterEl = document.getElementById('param-lap-filter');
@@ -1043,7 +1046,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         const gltfLoader = new GLTFLoader();
 
         beginAssetLoad();
-        const mapPath = (zipBlobUrls && (zipBlobUrls['map.png'] || zipBlobUrls['models/map.png']))
+        const mapPath = resolveZipBlobUrl(zipBlobUrls, 'map.png', 'models/map.png')
             || appState.defaultMapBlobUrl
             || './map.png';
         textureLoader.load(mapPath, (texture) => {
@@ -1099,7 +1102,9 @@ export function createSceneModule(appState, mounts, hooks = {}) {
 
         beginAssetLoad();
         if (customObjectsData) {
-            renderSceneObjects(customObjectsData.objects || [], gltfLoader);
+            const objects = customObjectsData.objects || [];
+            sceneState.lapCourse = extractLapCourseFromObjects(objects);
+            renderSceneObjects(objects, gltfLoader);
             completeAssetLoad();
         } else {
             fetch('./objects.json')
@@ -1108,7 +1113,9 @@ export function createSceneModule(appState, mounts, hooks = {}) {
                     return response.json();
                 })
                 .then((data) => {
-                    renderSceneObjects(data.objects || [], gltfLoader);
+                    const objects = data.objects || [];
+                    sceneState.lapCourse = extractLapCourseFromObjects(objects);
+                    renderSceneObjects(objects, gltfLoader);
                     completeAssetLoad();
                 })
                 .catch((error) => {
@@ -1135,9 +1142,9 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             const targetGroup = sceneState.dynamicGroups[key];
             const semanticInfo = getObjectSemanticInfo(obj, key);
 
-            if (obj.name && obj.name.endsWith('.glb')) {
+            if (obj.name && obj.name.toLowerCase().endsWith('.glb')) {
                 beginAssetLoad();
-                const modelPath = (appState.zipBlobUrls && (appState.zipBlobUrls[obj.name] || appState.zipBlobUrls[`models/${obj.name}`]))
+                const modelPath = resolveZipBlobUrl(appState.zipBlobUrls, obj.name, `models/${obj.name}`)
                     || `./models/${obj.name}`;
                 gltfLoader.load(modelPath, (gltf) => {
                     const model = gltf.scene;
