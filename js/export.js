@@ -91,6 +91,44 @@ export function createExportModule(appState, sceneApi, statusApi) {
         };
     }
 
+    function serializeLabelmeJson(sampleName, width, height, forExport = true) {
+        const { objectDetections } = buildVisibleDetectionData(forExport);
+        const enabledCategories = buildEnabledCategorySet();
+
+        const shapes = objectDetections
+            .filter((entry) => enabledCategories.has(entry.semanticKey))
+            .map((entry) => {
+                const x1 = entry.bbox.x;
+                const y1 = entry.bbox.y;
+                const x2 = entry.bbox.x + entry.bbox.width;
+                const y2 = entry.bbox.y + entry.bbox.height;
+                const label = entry.categoryName;
+
+                return {
+                    label: label,
+                    points: [
+                        [x1, y1],
+                        [x2, y2]
+                    ],
+                    group_id: null,
+                    description: "",
+                    shape_type: "rectangle",
+                    flags: {},
+                    score: null
+                };
+            });
+
+        return {
+            version: "5.0.1",
+            flags: {},
+            shapes,
+            imagePath: `${sampleName}_rgb.png`,
+            imageData: null,
+            imageHeight: height,
+            imageWidth: width
+        };
+    }
+
     async function renderBlobForVariant(variant) {
         sceneApi.renderSceneVariant(
             sceneApi.exportRenderer,
@@ -348,10 +386,24 @@ export function createExportModule(appState, sceneApi, statusApi) {
     }
 
     async function renderCurrentFrameArtifacts(sampleName) {
+        const mode = exportState.previewMode || 'rgb';
         const rgbBlob = await renderBlobForVariant('rgb');
-        const semanticBlob = await renderBlobForVariant('semantic');
-        const semanticRoadCoveredBlob = await renderBlobForVariant('semantic_road_covered');
-        const instanceBlob = await renderBlobForVariant('instance');
+        let semanticBlob = null;
+        let semanticRoadCoveredBlob = null;
+        let instanceBlob = null;
+        let labelmeJsonObj = null;
+        let labelsJson = null;
+
+        if (mode === 'semantic') {
+            semanticBlob = await renderBlobForVariant('semantic');
+        } else if (mode === 'semantic_road_covered') {
+            semanticRoadCoveredBlob = await renderBlobForVariant('semantic_road_covered');
+        } else if (mode === 'instance') {
+            instanceBlob = await renderBlobForVariant('instance');
+        } else if (mode === 'detections') {
+            labelmeJsonObj = serializeLabelmeJson(sampleName, exportState.resolution.width, exportState.resolution.height, true);
+            labelsJson = JSON.stringify(serializeLabels(sampleName), null, 2);
+        }
 
         return {
             sampleName,
@@ -359,18 +411,33 @@ export function createExportModule(appState, sceneApi, statusApi) {
             semanticBlob,
             semanticRoadCoveredBlob,
             instanceBlob,
-            labelsJson: JSON.stringify(serializeLabels(sampleName), null, 2),
-            cameraJson: JSON.stringify(serializeCamera(), null, 2)
+            labelsJson,
+            cameraJson: JSON.stringify(serializeCamera(), null, 2),
+            labelmeJson: labelmeJsonObj ? JSON.stringify(labelmeJsonObj, null, 2) : null
         };
     }
 
     function writeFrameArtifactsToZip(zip, artifacts) {
-        zip.file(`${artifacts.sampleName}_rgb.png`, artifacts.rgbBlob);
-        zip.file(`${artifacts.sampleName}_semantic_mask.png`, artifacts.semanticBlob);
-        zip.file(`${artifacts.sampleName}_semantic_road_covered_mask.png`, artifacts.semanticRoadCoveredBlob);
-        zip.file(`${artifacts.sampleName}_instance_mask.png`, artifacts.instanceBlob);
-        zip.file(`${artifacts.sampleName}_labels.json`, artifacts.labelsJson);
-        zip.file(`${artifacts.sampleName}_camera.json`, artifacts.cameraJson);
+        const mode = exportState.previewMode || 'rgb';
+        
+        // Export RGB image and camera info in all modes
+        zip.file(`images/${artifacts.sampleName}_rgb.png`, artifacts.rgbBlob);
+        zip.file(`metadata/${artifacts.sampleName}_camera.json`, artifacts.cameraJson);
+
+        if (mode === 'semantic' && artifacts.semanticBlob) {
+            zip.file(`masks/${artifacts.sampleName}_semantic_mask.png`, artifacts.semanticBlob);
+        } else if (mode === 'semantic_road_covered' && artifacts.semanticRoadCoveredBlob) {
+            zip.file(`masks/${artifacts.sampleName}_semantic_road_covered_mask.png`, artifacts.semanticRoadCoveredBlob);
+        } else if (mode === 'instance' && artifacts.instanceBlob) {
+            zip.file(`masks/${artifacts.sampleName}_instance_mask.png`, artifacts.instanceBlob);
+        } else if (mode === 'detections') {
+            if (artifacts.labelsJson) {
+                zip.file(`metadata/${artifacts.sampleName}_labels.json`, artifacts.labelsJson);
+            }
+            if (artifacts.labelmeJson) {
+                zip.file(`images/${artifacts.sampleName}_rgb.json`, artifacts.labelmeJson);
+            }
+        }
     }
 
     function withExportLock(statusMessage, callback) {
@@ -422,6 +489,19 @@ export function createExportModule(appState, sceneApi, statusApi) {
                 const baseSampleName = sanitizeSampleName(exportState.sampleName);
                 const zip = new window.JSZip();
                 const frameEntries = [];
+                const mode = exportState.previewMode || 'rgb';
+
+                let cocoCategories = null;
+                let cocoCategoryIds = null;
+                let cocoImages = [];
+                let cocoAnnotations = [];
+                const cocoAnnotationIdRef = { value: 1 };
+
+                if (mode === 'detections') {
+                    const cocoCatData = buildAnnotationCategories();
+                    cocoCategories = cocoCatData.categories;
+                    cocoCategoryIds = cocoCatData.categoryIds;
+                }
 
                 for (let index = 0; index < poseTrack.frames.length; index++) {
                     poseTrack.api.applyFrame(index);
@@ -430,6 +510,20 @@ export function createExportModule(appState, sceneApi, statusApi) {
                     const frameSampleName = buildTrajectoryFrameSampleName(baseSampleName, index, poseTrack.frames.length);
                     const artifacts = await renderCurrentFrameArtifacts(frameSampleName);
                     writeFrameArtifactsToZip(zip, artifacts);
+
+                    if (mode === 'detections') {
+                        const imageId = index + 1;
+                        const fileName = `images/${frameSampleName}_rgb.png`;
+                        cocoImages.push(createCocoImage({
+                            id: imageId,
+                            fileName,
+                            width: exportState.resolution.width,
+                            height: exportState.resolution.height,
+                            frameIndex: index,
+                            timestamp: frame.timestamp
+                        }));
+                        cocoAnnotations.push(...buildFrameCocoAnnotations(imageId, cocoCategoryIds, cocoAnnotationIdRef));
+                    }
 
                     frameEntries.push({
                         index,
@@ -450,6 +544,26 @@ export function createExportModule(appState, sceneApi, statusApi) {
                     JSON.stringify(buildTrajectoryManifest(baseSampleName, poseTrack, frameEntries), null, 2)
                 );
 
+                if (mode === 'detections') {
+                    zip.file('annotations.json', JSON.stringify({
+                        info: {
+                            description: 'Trajectory-rendered COCO detection dataset',
+                            sample_name: baseSampleName,
+                            source_track_file: poseTrack.fileName || ''
+                        },
+                        images: cocoImages,
+                        annotations: cocoAnnotations,
+                        categories: cocoCategories
+                    }, null, 2));
+                    zip.file('dataset_info.json', JSON.stringify({
+                        sampleName: baseSampleName,
+                        sourceTrackFile: poseTrack.fileName || '',
+                        imageCount: cocoImages.length,
+                        annotationCount: cocoAnnotations.length,
+                        categoryNames: cocoCategories.map((entry) => entry.name)
+                    }, null, 2));
+                }
+
                 const archiveBlob = await zip.generateAsync({ type: 'blob' });
                 downloadBlob(archiveBlob, `${baseSampleName}_trajectory.zip`);
                 statusApi.updateStatus(`导出完成：${baseSampleName}_trajectory.zip`, 'success');
@@ -466,85 +580,9 @@ export function createExportModule(appState, sceneApi, statusApi) {
         });
     }
 
-    async function exportTrajectoryCocoZip() {
-        if (!poseTrack.loaded || !poseTrack.frames.length) {
-            statusApi.updateStatus('请先导入轨迹文件，再执行 COCO 批量导出。', 'error');
-            return;
-        }
-
-        return withExportLock('正在导出 COCO 检测数据集...', async () => {
-            const originalCameraState = cloneCameraState();
-            const originalTrackIndex = poseTrack.currentIndex;
-
-            try {
-                const baseSampleName = sanitizeSampleName(exportState.sampleName);
-                const zip = new window.JSZip();
-                const imagesFolder = zip.folder('images');
-                const { categories, categoryIds } = buildAnnotationCategories();
-                const images = [];
-                const annotations = [];
-                const annotationIdRef = { value: 1 };
-
-                for (let index = 0; index < poseTrack.frames.length; index++) {
-                    poseTrack.api.applyFrame(index);
-                    const frame = poseTrack.frames[index];
-                    const frameSampleName = buildTrajectoryFrameSampleName(baseSampleName, index, poseTrack.frames.length);
-                    const artifacts = await renderCurrentFrameArtifacts(frameSampleName);
-                    const imageId = index + 1;
-                const fileName = `${frameSampleName}_rgb.png`;
-
-                    imagesFolder.file(fileName, artifacts.rgbBlob);
-                    images.push(createCocoImage({
-                        id: imageId,
-                        fileName,
-                        width: exportState.resolution.width,
-                        height: exportState.resolution.height,
-                        frameIndex: index,
-                        timestamp: frame.timestamp
-                    }));
-
-                    annotations.push(...buildFrameCocoAnnotations(imageId, categoryIds, annotationIdRef));
-                    statusApi.updateStatus(`正在导出 COCO 数据集 ${index + 1} / ${poseTrack.frames.length}...`, 'idle');
-                }
-
-                zip.file('annotations.json', JSON.stringify({
-                    info: {
-                        description: 'Trajectory-rendered COCO detection dataset',
-                        sample_name: baseSampleName,
-                        source_track_file: poseTrack.fileName || ''
-                    },
-                    images,
-                    annotations,
-                    categories
-                }, null, 2));
-                zip.file('dataset_info.json', JSON.stringify({
-                    sampleName: baseSampleName,
-                    sourceTrackFile: poseTrack.fileName || '',
-                    imageCount: images.length,
-                    annotationCount: annotations.length,
-                    categoryNames: categories.map((entry) => entry.name)
-                }, null, 2));
-
-                const archiveBlob = await zip.generateAsync({ type: 'blob' });
-                downloadBlob(archiveBlob, `${baseSampleName}_coco_detection.zip`);
-                statusApi.updateStatus(`导出完成：${baseSampleName}_coco_detection.zip`, 'success');
-            } catch (error) {
-                statusApi.updateStatus(`COCO 导出失败：${error.message}`, 'error');
-            } finally {
-                restoreCameraState(originalCameraState);
-                if (poseTrack.loaded && poseTrack.frames[originalTrackIndex]) {
-                    poseTrack.api.applyFrame(originalTrackIndex);
-                } else {
-                    sceneApi.requestExportPreview();
-                }
-            }
-        });
-    }
-
     return {
         exportSampleZip,
         exportTrajectoryZip,
-        exportTrajectoryCocoZip,
         getDetectionPreviewData,
         serializeLabels,
         serializeCamera

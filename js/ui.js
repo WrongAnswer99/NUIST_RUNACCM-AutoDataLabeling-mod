@@ -8,7 +8,6 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         exportStatusEl,
         exportZipButton,
         exportTrajectoryZipButton,
-        exportCocoZipButton,
         semanticLabelEditor,
         instanceLabelsEl
     } = mounts;
@@ -16,6 +15,26 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
     function updateStatus(message, state = 'idle') {
         exportStatusEl.textContent = message;
         exportStatusEl.dataset.state = state;
+    }
+
+    function isObjectVisible(object3d) {
+        let current = object3d;
+        while (current && current !== sceneApi.scene) {
+            if (!current.visible) return false;
+            current = current.parent;
+        }
+        return true;
+    }
+
+    function syncSemanticRegistryWith3DVisibility() {
+        [...sceneState.semanticRegistry.values()].forEach((entry) => {
+            const instances = [...sceneState.instanceRegistry.values()]
+                .filter((inst) => inst.semanticKey === entry.key);
+            
+            if (instances.length > 0) {
+                entry.enabled = instances.some((inst) => isObjectVisible(inst.rootObject));
+            }
+        });
     }
 
     function setWorkflowPage(page) {
@@ -43,6 +62,11 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             panel.classList.toggle('active', panel.dataset.workflowPage === nextPage);
         });
 
+        if (nextPage === 'camera') {
+            syncSemanticRegistryWith3DVisibility();
+            updateSemanticLabelEditor();
+        }
+
         sceneApi.onResize();
         sceneApi.requestExportPreview();
     }
@@ -60,14 +84,6 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         exportZipButton.disabled = !sceneState.resourcesReady || sceneState.exportInProgress;
         if (exportTrajectoryZipButton) {
             exportTrajectoryZipButton.disabled = (
-                !sceneState.resourcesReady
-                || sceneState.exportInProgress
-                || !poseTrack.loaded
-                || !poseTrack.frames.length
-            );
-        }
-        if (exportCocoZipButton) {
-            exportCocoZipButton.disabled = (
                 !sceneState.resourcesReady
                 || sceneState.exportInProgress
                 || !poseTrack.loaded
@@ -362,7 +378,6 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         document.getElementById('reset-export-camera').addEventListener('click', resetExportCamera);
         exportZipButton.addEventListener('click', exportApi.exportSampleZip);
         exportTrajectoryZipButton?.addEventListener('click', exportApi.exportTrajectoryZip);
-        exportCocoZipButton?.addEventListener('click', exportApi.exportTrajectoryCocoZip);
     }
 
     function bindPoseTrackEvents() {

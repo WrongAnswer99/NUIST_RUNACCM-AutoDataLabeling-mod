@@ -15,7 +15,6 @@ const mounts = {
     exportStatusEl: document.getElementById('export-status'),
     exportZipButton: document.getElementById('export-zip-button'),
     exportTrajectoryZipButton: document.getElementById('export-trajectory-zip-button'),
-    exportCocoZipButton: document.getElementById('export-coco-zip-button'),
     semanticLabelEditor: document.getElementById('semantic-label-editor'),
     instanceLabelsEl: document.getElementById('instance-labels')
 };

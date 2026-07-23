@@ -28,6 +28,7 @@
 6. **一键导出数据集**
    支持一键生成并下载包含以下内容的 ZIP 样本包：
    * `rgb.png`：标准相机视野图。
+   * `rgb.json`：符合 **Labelme / X-AnyLabeling** 标准的图像标注 JSON 文件（与 `_rgb.png` 保持同名，包含各目标的检测边界框与标签，支持解压后直接在 X-AnyLabeling 中打开并进行二次微调和精细化编辑）。
    * `semantic_mask.png`：类别的语义分割图。
    * `semantic_road_covered_mask.png`：路面覆盖语义分割图。
    * `instance_mask.png`：实例分割掩码图。
@@ -141,9 +142,16 @@ python3 -m http.server 8000
 ### 第六步：一键导出数据集 (Dataset Export)
 1. 切换到下方导航栏的 **“导出”** 选项卡。
 2. 在左侧栏的 **“Sample Name”** 中输入数据集的前缀名。
-3. 在右侧面板中，根据需要选择以下三种导出方式之一：
-   - **导出当前样本 ZIP**：仅渲染并打包当前帧下的数据集。
-   - **导出整段轨迹 ZIP**：自动遍历整条轨迹中的所有帧，进行离屏同步渲染，并打包成包含完整帧序列的多模态数据集 ZIP。
-   - **导出 COCO 检测 ZIP**：专门导出含有标准 COCO json 目标检测格式的文件包。
-4. 导出就绪后，系统会自动打包并调起浏览器的文件下载，解压即可用于后续深度学习训练。
-
+3. **选择需要导出的数据类型**：
+   - 系统采用**“所见即所得”**的视角联动导出机制。在 **“相机”** 选项卡的 **“视图切换器”** 中选择不同的预览相机模式，导出的 ZIP 包中就会只包含该模式对应的数据集，防止无关数据混杂：
+     - **RGB** 模式：仅导出 `images/`（无标注 JSON）与相机的物理位姿参数 `metadata/*_camera.json`。
+     - **检测 (Detections)** 模式：仅导出 `images/*.png` 及其匹配的 `images/*.json` (Labelme 格式) 和 `metadata/*_labels.json` (COCO 单帧格式)，不渲染任何 Mask 掩码图。另外，当执行“导出整段轨迹 ZIP”时，系统会在 ZIP 根目录下自动生成用于直接训练的 COCO 标准统一标注文件 `annotations.json` 及 `dataset_info.json`，提供可以直接喂给 YOLO 等目标检测框架的完整数据集。
+     - **语义 (Semantic)** 模式：仅导出 `images/*.png` 及其对应的语义分割图 `masks/*_semantic_mask.png`。
+     - **覆盖 (Covered)** 模式：仅导出 `images/*.png` 及其对应的路面覆盖图 `masks/*_semantic_road_covered_mask.png`。
+     - **实例 (Instance)** 模式：仅导出 `images/*.png` 及其对应的实例分割图 `masks/*_instance_mask.png`。
+4. 在右侧面板中，点击 **“导出当前样本 ZIP”** 或 **“导出整段轨迹 ZIP”**。
+5. 导出就绪后，系统会自动打包并调起浏览器的文件下载。
+5. **在 X-AnyLabeling 中加载**：
+   - 解压 ZIP 压缩包，打开 **X-AnyLabeling** 软件。
+   - 点击 **File > Open Directory**（或快捷键 `Ctrl+U` / `Cmd+U`），选择解压出的 **`images` 文件夹**。
+   - 此时软件即可直接识别并加载每张图的标注状态，列表内不会混入掩码图，用户可以直接二次编辑或进行模型微调。
