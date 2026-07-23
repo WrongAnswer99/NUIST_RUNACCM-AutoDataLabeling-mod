@@ -91,6 +91,7 @@ export function createAppState() {
             maskTexture: null,
             groundMesh: null,
             originalMapMaterial: null,
+            originalMapPath: null,
             trackRecord: null,
             lapCourse: null
         },

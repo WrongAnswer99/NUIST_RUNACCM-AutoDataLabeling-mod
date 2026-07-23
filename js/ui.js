@@ -74,6 +74,13 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
                 || !poseTrack.frames.length
             );
         }
+
+        const mapImportButton = document.getElementById('map-image-import');
+        const mapResetButton = document.getElementById('map-image-reset');
+        if (mapImportButton && mapResetButton) {
+            mapImportButton.disabled = !sceneState.resourcesReady;
+            mapResetButton.disabled = !sceneState.resourcesReady;
+        }
     }
 
     function updateInstanceLabelList() {
@@ -434,12 +441,67 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         }
     }
 
+    function bindMapImageEvents() {
+        const fileInput = document.getElementById('map-image-file');
+        const importButton = document.getElementById('map-image-import');
+        const resetButton = document.getElementById('map-image-reset');
+        const statusEl = document.getElementById('map-image-status');
+
+        let uploadedObjectUrl = null;
+
+        importButton.addEventListener('click', () => {
+            if (!sceneState.resourcesReady) {
+                updateStatus('请先导入场景 ZIP 压缩包，然后再上传底图。', 'error');
+                return;
+            }
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            try {
+                if (uploadedObjectUrl) {
+                    URL.revokeObjectURL(uploadedObjectUrl);
+                }
+                uploadedObjectUrl = URL.createObjectURL(file);
+                sceneApi.updateGroundMapTexture(uploadedObjectUrl);
+                statusEl.textContent = `已使用自定义底图: ${file.name}`;
+                updateStatus('自定义底图已成功加载并覆盖场景底图。', 'success');
+            } catch (error) {
+                updateStatus(`自定义底图加载失败：${error.message}`, 'error');
+            } finally {
+                fileInput.value = '';
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            if (!sceneState.resourcesReady) {
+                updateStatus('请先导入场景 ZIP 压缩包，然后再操作底图。', 'error');
+                return;
+            }
+            try {
+                if (uploadedObjectUrl) {
+                    URL.revokeObjectURL(uploadedObjectUrl);
+                    uploadedObjectUrl = null;
+                }
+                const originalPath = sceneState.originalMapPath || appState.defaultMapBlobUrl || './map.png';
+                sceneApi.updateGroundMapTexture(originalPath);
+                statusEl.textContent = '使用场景内置或默认底图';
+                updateStatus('底图已重置为场景内置/默认底图。', 'success');
+            } catch (error) {
+                updateStatus(`底图重置失败：${error.message}`, 'error');
+            }
+        });
+    }
+
     function initialize() {
         bindWorkflowPageEvents();
         bindPreviewModeButtons();
         bindExportFormEvents();
         bindMaskControls();
         bindPoseTrackEvents();
+        bindMapImageEvents();
         syncExportFormFromState();
         updateSemanticLabelEditor();
         updateInstanceLabelList();

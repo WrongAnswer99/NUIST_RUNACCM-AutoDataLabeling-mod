@@ -772,6 +772,46 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         requestExportPreview();
     }
 
+    function updateGroundMapTexture(imageSrc) {
+        if (!sceneState.groundMesh || !sceneState.originalMapMaterial) return;
+
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(imageSrc, (texture) => {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.x = -1;
+            texture.repeat.y = -1;
+            texture.offset.x = 1;
+            texture.offset.y = 1;
+            texture.needsUpdate = true;
+
+            if (sceneState.originalMapMaterial.map) {
+                sceneState.originalMapMaterial.map.dispose();
+            }
+            sceneState.originalMapMaterial.map = texture;
+            sceneState.originalMapMaterial.needsUpdate = true;
+
+            sceneState.loadedImageElement = texture.image;
+
+            buildMapArrowComponentData();
+            updateMaskTexture(parseFloat(document.getElementById('param-blur').value));
+
+            if (sceneState.maskTexture) {
+                antialiasedTrackShader.uniforms.uTexture.value = sceneState.maskTexture;
+            }
+
+            if (sceneState.mapArrowMaterial) {
+                sceneState.mapArrowMaterial.uniforms.uTexture.value = sceneState.mapArrowTexture;
+                sceneState.mapArrowMaterial.needsUpdate = true;
+            }
+
+            requestExportPreview();
+            hooks.onSemanticRegistryChanged?.();
+        }, undefined, () => {
+            hooks.onStatusMessage?.('新底图加载失败。', 'error');
+        });
+    }
+
     function syncMaskControls() {
         const blur = parseFloat(document.getElementById('param-blur').value);
         const edgeOffset = parseInt(document.getElementById('param-threshold').value, 10);
@@ -1049,6 +1089,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         const mapPath = resolveZipBlobUrl(zipBlobUrls, 'map.png', 'models/map.png')
             || appState.defaultMapBlobUrl
             || './map.png';
+        sceneState.originalMapPath = mapPath;
         textureLoader.load(mapPath, (texture) => {
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
@@ -1261,6 +1302,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             syncExportCameraFromState,
             updateMaskTexture,
             updateGroundTransform,
+            updateGroundMapTexture,
             syncMaskControls,
             loadResources,
             animate,
