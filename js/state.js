@@ -94,6 +94,9 @@ export function createAppState() {
             trackRecord: null,
             lapCourse: null
         },
+        ui: {
+            activeWorkflowPage: 'resources'
+        },
         exportState: {
             previewMode: 'rgb',
             sampleName: 'sample_0001',

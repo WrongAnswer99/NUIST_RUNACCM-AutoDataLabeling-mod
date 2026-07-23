@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three.js 赛道数据可视化预览</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2300ffaa'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-family='Arial' font-size='12' font-weight='700' fill='%2304110d'%3EXS%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="./styles/main.css">
     <script src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js" async></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -67,75 +68,73 @@
         </div>
     </div>
 
-    <div id="app-shell">
-        <aside id="left-panel" class="side-panel">
-            <h3>核心模式切换</h3>
-            <label class="master-switch" style="margin-bottom: 8px;">
-                <input type="checkbox" id="master-mask-mode">
-                <span>开启标注掩码模式</span>
-            </label>
+    <div id="app-shell" data-active-workflow="resources">
+        <aside id="left-panel" class="side-panel workflow-sidebar">
+            <section class="workflow-panel" data-workflow-page="resources">
+                <h3>资源</h3>
+                <div class="panel-card">
+                    <div class="section-title">场景状态</div>
+                    <p class="helper-text">场景 ZIP 已加载。可在这里校准底图比例和中心点。</p>
+                </div>
+                <div class="panel-card">
+                    <div class="section-title">轨迹文件</div>
+                    <input id="pose-track-file" type="file" accept=".txt,text/plain" hidden>
+                    <div class="button-row">
+                        <button type="button" id="pose-track-import">导入轨迹文件</button>
+                        <button type="button" id="pose-track-clear">清空轨迹</button>
+                    </div>
+                    <div id="pose-track-status" class="helper-text status-pill">未导入轨迹</div>
+                </div>
+                <details class="advanced-group">
+                    <summary>底图物理校准</summary>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>底图物理宽度 (Width):</span><span id="val-width">4.15</span>m</div>
+                        <input type="range" id="param-width" min="1.0" max="10.0" step="0.05" value="4.15">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>底图物理高度 (Height):</span><span id="val-height">5.10</span>m</div>
+                        <input type="range" id="param-height" min="1.0" max="10.0" step="0.05" value="5.10">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>中心位置 X (CenterX):</span><span id="val-cx">2.10</span></div>
+                        <input type="range" id="param-cx" min="-2.0" max="6.0" step="0.02" value="2.10">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>中心位置 Z (CenterZ):</span><span id="val-cz">2.44</span></div>
+                        <input type="range" id="param-cz" min="-2.0" max="6.0" step="0.02" value="2.44">
+                    </div>
+                </details>
+            </section>
 
-            <div class="field-block full-span" style="margin-bottom: 8px;">
-                <label for="param-lap-filter" style="font-size: 12px; color: var(--panel-subtle); display: block; margin-bottom: 4px;">圈数过滤显示</label>
-                <select id="param-lap-filter" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #3b3b3b; background: var(--panel-input); color: var(--panel-text);">
-                    <option value="all">显示所有圈数</option>
-                    <option value="0">第一圈 (Lap 0)</option>
-                    <option value="1">第二圈 (Lap 1)</option>
-                    <option value="2">第三圈 (Lap 2)</option>
-                    <option value="3">第四圈 (Lap 3)</option>
-                    <option value="4">第五圈 (Lap 4)</option>
-                </select>
-            </div>
+            <section class="workflow-panel" data-workflow-page="annotate">
+                <h3>标注</h3>
+                <label class="master-switch">
+                    <input type="checkbox" id="master-mask-mode">
+                    <span>开启标注掩码模式</span>
+                </label>
+                <div class="field-block full-span">
+                    <label for="param-lap-filter">圈数过滤显示</label>
+                    <select id="param-lap-filter">
+                        <option value="all">显示所有圈数</option>
+                        <option value="0">第一圈 (Lap 0)</option>
+                        <option value="1">第二圈 (Lap 1)</option>
+                        <option value="2">第三圈 (Lap 2)</option>
+                        <option value="3">第四圈 (Lap 3)</option>
+                        <option value="4">第五圈 (Lap 4)</option>
+                    </select>
+                </div>
+                <h3>模型独立可见性</h3>
+                <div id="dynamic-layers"></div>
+            </section>
 
-            <h3>高级标注微调</h3>
-            <div class="slider-group">
-                <div class="slider-label"><span>赛道模糊半径 (Blur):</span><span id="val-blur">4.5</span>px</div>
-                <input type="range" id="param-blur" min="0.5" max="20.0" step="0.5" value="4.5">
-            </div>
-            <div class="slider-group">
-                <div class="slider-label"><span>边界偏移 (Edge Offset):</span><span id="val-threshold">-65</span></div>
-                <input type="range" id="param-threshold" min="-80" max="32" step="1" value="-65">
-            </div>
-
-            <h3>底图物理校准</h3>
-            <div class="slider-group">
-                <div class="slider-label"><span>底图物理宽度 (Width):</span><span id="val-width">4.15</span>m</div>
-                <input type="range" id="param-width" min="1.0" max="10.0" step="0.05" value="4.15">
-            </div>
-            <div class="slider-group">
-                <div class="slider-label"><span>底图物理高度 (Height):</span><span id="val-height">5.10</span>m</div>
-                <input type="range" id="param-height" min="1.0" max="10.0" step="0.05" value="5.10">
-            </div>
-            <div class="slider-group">
-                <div class="slider-label"><span>中心位置 X (CenterX):</span><span id="val-cx">2.10</span></div>
-                <input type="range" id="param-cx" min="-2.0" max="6.0" step="0.02" value="2.10">
-            </div>
-            <div class="slider-group">
-                <div class="slider-label"><span>中心位置 Z (CenterZ):</span><span id="val-cz">2.44</span></div>
-                <input type="range" id="param-cz" min="-2.0" max="6.0" step="0.02" value="2.44">
-            </div>
-
-            <h3>模型独立可见性</h3>
-            <div id="dynamic-layers"></div>
-        </aside>
-
-        <main id="viewport-shell">
-            <div id="viewport-canvas"></div>
-        </main>
-
-        <aside id="right-panel" class="side-panel">
-            <section class="panel-card">
-                <h3>导出预览</h3>
+            <section class="workflow-panel" data-workflow-page="camera">
+                <h3>相机</h3>
                 <div class="segmented" id="preview-mode-switch">
                     <button type="button" class="active" data-preview-mode="rgb">RGB</button>
-                    <button type="button" data-preview-mode="detections">Detections</button>
-                    <button type="button" data-preview-mode="semantic">Semantic</button>
-                    <button type="button" data-preview-mode="semantic_road_covered">Semantic (Covered)</button>
-                    <button type="button" data-preview-mode="instance">Instance</button>
-                </div>
-                <div id="export-preview-frame">
-                    <div id="export-preview-mount"></div>
-                    <canvas id="export-preview-overlay"></canvas>
+                    <button type="button" data-preview-mode="detections">检测</button>
+                    <button type="button" data-preview-mode="semantic">语义</button>
+                    <button type="button" data-preview-mode="semantic_road_covered">覆盖</button>
+                    <button type="button" data-preview-mode="instance">实例</button>
                 </div>
                 <div class="button-row">
                     <button type="button" id="sync-main-view">同步主视角</button>
@@ -143,22 +142,65 @@
                 </div>
             </section>
 
-            <section class="panel-card">
-                <h3>轨迹导入</h3>
-                <input id="pose-track-file" type="file" accept=".txt,text/plain" hidden>
-                <div class="button-row">
-                    <button type="button" id="pose-track-import">导入轨迹文件</button>
-                    <button type="button" id="pose-track-clear">清空轨迹</button>
+            <section class="workflow-panel" data-workflow-page="export">
+                <h3>导出</h3>
+                <div class="field-block full-span">
+                    <label for="export-sample-name">Sample Name</label>
+                    <input id="export-sample-name" type="text" value="sample_0001">
                 </div>
-                <div id="pose-track-status" class="helper-text">未导入轨迹</div>
-                <div class="slider-group">
-                    <div class="slider-label"><span>轨迹进度</span><span id="pose-track-frame-label">0 / 0</span></div>
-                    <input type="range" id="pose-track-progress" min="0" max="0" step="1" value="0" disabled>
+                <div class="panel-card">
+                    <div class="section-title">导出范围</div>
+                    <p class="helper-text">当前样本可单帧导出；导入轨迹后可导出整段轨迹和 COCO 检测数据。</p>
                 </div>
-                <div id="pose-track-frame-info" class="helper-text">X: -- m | Z: -- m | Yaw: -- deg</div>
+            </section>
+        </aside>
+
+        <main id="viewport-shell">
+            <div id="viewport-canvas"></div>
+        </main>
+
+        <aside id="right-panel" class="side-panel workflow-inspector">
+            <section class="workflow-panel" data-workflow-page="resources">
+                <h3>资源检查器</h3>
+                <div class="panel-card">
+                    <div class="section-title">导入结果</div>
+                    <p class="helper-text">若模型缺失，系统会在画布中使用占位体提示；ZIP 兼容嵌套目录和大小写变化。</p>
+                </div>
+                <h3>当前帧</h3>
+                <div id="pose-track-frame-info" class="metric-readout">X: -- m | Z: -- m | Yaw: -- deg</div>
+                <div class="panel-card">
+                    <div class="section-title">回放提示</div>
+                    <p class="helper-text">拖动底部时间轴查看对应帧；圈数过滤会随当前帧自动同步。</p>
+                </div>
             </section>
 
-            <section class="panel-card">
+            <section class="workflow-panel" data-workflow-page="annotate">
+                <h3>标签设置</h3>
+                <div class="helper-text">语义标签可编辑名称，ID 固定。实例名称首版自动生成。</div>
+                <div id="semantic-label-editor"></div>
+                <div class="field-block full-span">
+                    <label for="instance-labels">Instance Naming</label>
+                    <textarea id="instance-labels" readonly></textarea>
+                </div>
+                <details class="advanced-group">
+                    <summary>高级标注微调</summary>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>赛道模糊半径 (Blur):</span><span id="val-blur">4.5</span>px</div>
+                        <input type="range" id="param-blur" min="0.5" max="20.0" step="0.5" value="4.5">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label"><span>边界偏移 (Edge Offset):</span><span id="val-threshold">-65</span></div>
+                        <input type="range" id="param-threshold" min="-80" max="32" step="1" value="-65">
+                    </div>
+                </details>
+            </section>
+
+            <section class="workflow-panel" data-workflow-page="camera">
+                <h3>导出预览</h3>
+                <div id="export-preview-frame">
+                    <div id="export-preview-mount"></div>
+                    <canvas id="export-preview-overlay"></canvas>
+                </div>
                 <h3>相机设置</h3>
                 <div class="field-grid">
                     <div class="field-block"><label for="export-cam-px">Position X</label><input id="export-cam-px" type="number" step="0.01"></div>
@@ -169,9 +211,6 @@
                     <div class="field-block"><label for="export-rot-y">Euler Y</label><input id="export-rot-y" type="number" step="0.1"></div>
                     <div class="field-block"><label for="export-rot-z">Euler Z</label><input id="export-rot-z" type="number" step="0.1"></div>
                 </div>
-            </section>
-
-            <section class="panel-card">
                 <h3>画面设置</h3>
                 <div class="field-grid">
                     <div class="field-block full-span">
@@ -189,23 +228,7 @@
                 </div>
             </section>
 
-            <section class="panel-card">
-                <h3>标签设置</h3>
-                <div class="field-grid">
-                    <div class="field-block full-span">
-                        <label for="export-sample-name">Sample Name</label>
-                        <input id="export-sample-name" type="text" value="sample_0001">
-                    </div>
-                </div>
-                <div class="helper-text">语义标签可编辑名称，ID 固定。实例名称首版自动生成。</div>
-                <div id="semantic-label-editor"></div>
-                <div class="field-block full-span" style="margin-top: 10px;">
-                    <label for="instance-labels">Instance Naming</label>
-                    <textarea id="instance-labels" readonly></textarea>
-                </div>
-            </section>
-
-            <section class="panel-card">
+            <section class="workflow-panel" data-workflow-page="export">
                 <h3>导出</h3>
                 <div id="export-status" data-state="idle">正在加载场景资源...</div>
                 <div class="button-row">
@@ -217,6 +240,35 @@
                 </div>
             </section>
         </aside>
+
+        <section id="workflow-timeline" class="workflow-timeline">
+            <div class="timeline-summary">
+                <span>轨迹进度</span>
+                <strong id="pose-track-frame-label">0 / 0</strong>
+            </div>
+            <div class="slider-group timeline-slider">
+                <input type="range" id="pose-track-progress" min="0" max="0" step="1" value="0" disabled>
+            </div>
+        </section>
+
+        <nav class="workflow-pagebar" aria-label="工作流程">
+            <button type="button" class="active" data-workflow-target="resources">
+                <span>资源</span>
+                <small>场景 / 轨迹</small>
+            </button>
+            <button type="button" data-workflow-target="annotate">
+                <span>标注</span>
+                <small>掩码 / 图层</small>
+            </button>
+            <button type="button" data-workflow-target="camera">
+                <span>相机</span>
+                <small>视角 / 预览</small>
+            </button>
+            <button type="button" data-workflow-target="export">
+                <span>导出</span>
+                <small>样本 / COCO</small>
+            </button>
+        </nav>
     </div>
 
     <script type="module" src="./js/app.js"></script>

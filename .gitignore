@@ -80,3 +80,7 @@ htmlcov/
 *.zip
 *.tar.gz
 *.tgz
+
+.playwright-cli
+.superpowers
+docs/superpowers/

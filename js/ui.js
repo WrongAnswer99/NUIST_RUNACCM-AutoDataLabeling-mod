@@ -1,7 +1,7 @@
 import { arToSceneVector3, sceneToArVector3 } from './state.js';
 
 export function createUIModule(appState, sceneApi, exportApi, mounts) {
-    const { scene: sceneState, exportState, defaults, poseTrack } = appState;
+    const { scene: sceneState, exportState, defaults, poseTrack, ui } = appState;
     const {
         previewFrame,
         previewOverlay,
@@ -16,6 +16,44 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
     function updateStatus(message, state = 'idle') {
         exportStatusEl.textContent = message;
         exportStatusEl.dataset.state = state;
+    }
+
+    function setWorkflowPage(page) {
+        const availablePages = [...document.querySelectorAll('[data-workflow-target]')]
+            .map((button) => button.dataset.workflowTarget);
+        const nextPage = availablePages.includes(page) ? page : 'resources';
+        ui.activeWorkflowPage = nextPage;
+        const appShell = document.getElementById('app-shell');
+        if (appShell) {
+            appShell.dataset.activeWorkflow = nextPage;
+        }
+
+        const currentLabel = document.getElementById('workflow-current-label');
+        const activeButton = document.querySelector(`[data-workflow-target="${nextPage}"]`);
+        if (currentLabel && activeButton) {
+            currentLabel.textContent = activeButton.querySelector('span')?.textContent || nextPage;
+        }
+
+        document.querySelectorAll('[data-workflow-target]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.workflowTarget === nextPage);
+            button.setAttribute('aria-current', button.dataset.workflowTarget === nextPage ? 'page' : 'false');
+        });
+
+        document.querySelectorAll('[data-workflow-page]').forEach((panel) => {
+            panel.classList.toggle('active', panel.dataset.workflowPage === nextPage);
+        });
+
+        sceneApi.onResize();
+        sceneApi.requestExportPreview();
+    }
+
+    function bindWorkflowPageEvents() {
+        document.querySelectorAll('[data-workflow-target]').forEach((button) => {
+            button.addEventListener('click', () => {
+                setWorkflowPage(button.dataset.workflowTarget);
+            });
+        });
+        setWorkflowPage(ui.activeWorkflowPage || 'resources');
     }
 
     function refreshAvailability() {
@@ -397,6 +435,7 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
     }
 
     function initialize() {
+        bindWorkflowPageEvents();
         bindPreviewModeButtons();
         bindExportFormEvents();
         bindMaskControls();
