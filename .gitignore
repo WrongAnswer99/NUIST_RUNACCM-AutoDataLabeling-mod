@@ -77,7 +77,6 @@ htmlcov/
 
 # Exported dataset files / user generated ZIP files
 # (This tool supports exporting dataset ZIPs, so we exclude generated ZIPs)
-*.zip
 *.tar.gz
 *.tgz
 
