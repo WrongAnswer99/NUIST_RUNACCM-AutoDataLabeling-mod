@@ -920,3 +920,172 @@
             width: 100%;
             animation: fadeIn 0.4s ease-out;
         }
+
+        /* Onboarding / Tutorial styles */
+        .landing-buttons {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .demo-button, .tutorial-button-landing {
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .demo-button {
+            background: linear-gradient(135deg, #00ffaa 0%, #00b3ff 100%);
+            border: none;
+            color: #04110d;
+            box-shadow: 0 4px 15px rgba(0, 255, 170, 0.25);
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 170, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .tutorial-button-landing {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--panel-text);
+        }
+
+        .tutorial-button-landing:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--panel-accent);
+            color: var(--panel-accent);
+        }
+
+        /* Floating Help/Tutorial Button in viewport */
+        .floating-tutorial-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 100;
+            background: rgba(20, 20, 20, 0.85);
+            border: 1px solid var(--panel-border);
+            color: var(--panel-text);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .floating-tutorial-btn::before {
+            content: "📖";
+            font-size: 12px;
+        }
+
+        .floating-tutorial-btn:hover {
+            border-color: var(--panel-accent);
+            color: var(--panel-accent);
+            background: rgba(20, 20, 20, 0.95);
+            transform: scale(1.05);
+        }
+
+        /* Customized Driver.js Popover Styles */
+        .driver-popover.custom-driver-popover {
+            background: rgba(25, 25, 25, 0.95) !important;
+            border: 1px solid var(--panel-border) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(12px) !important;
+            color: #e5e5e5 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+            padding: 20px !important;
+            max-width: 320px !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-title {
+            color: var(--panel-accent) !important;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            margin-bottom: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-description {
+            color: #b3b3b3 !important;
+            font-size: 13px !important;
+            line-height: 1.6 !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-footer {
+            margin-top: 15px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-progress-text {
+            color: var(--panel-subtle) !important;
+            font-size: 11px !important;
+        }
+
+        .driver-popover.custom-driver-popover button {
+            border-radius: 6px !important;
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-btn-next {
+            background: var(--panel-accent) !important;
+            border: none !important;
+            color: #04110d !important;
+            text-shadow: none !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-btn-next:hover {
+            background: #00dd99 !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-btn-prev {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid var(--panel-border) !important;
+            color: var(--panel-text) !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-btn-prev:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-arrow {
+            border-color: rgba(25, 25, 25, 0.95) !important;
+        }
+
+        .driver-popover.custom-driver-popover .driver-popover-arrow-side-left {
+            border-left-color: rgba(25, 25, 25, 0.95) !important;
+        }
+        .driver-popover.custom-driver-popover .driver-popover-arrow-side-right {
+            border-right-color: rgba(25, 25, 25, 0.95) !important;
+        }
+        .driver-popover.custom-driver-popover .driver-popover-arrow-side-top {
+            border-top-color: rgba(25, 25, 25, 0.95) !important;
+        }
+        .driver-popover.custom-driver-popover .driver-popover-arrow-side-bottom {
+            border-bottom-color: rgba(25, 25, 25, 0.95) !important;
+        }

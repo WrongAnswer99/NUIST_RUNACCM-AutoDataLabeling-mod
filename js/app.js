@@ -64,7 +64,9 @@ const sceneApi = createSceneModule(appState, mounts, {
         // Start Three.js loop and resize once UI is active
         sceneApi.animate();
         sceneApi.onResize();
-        loadDefaultPoseTrackOnce();
+        loadDefaultPoseTrackOnce().finally(() => {
+            window.dispatchEvent(new CustomEvent('app-activated'));
+        });
     },
     onResourceStateChanged: () => {
         uiApi?.refreshAvailability();
@@ -205,3 +207,62 @@ startImportBtn.addEventListener('click', async () => {
 });
 
 window.addEventListener('resize', sceneApi.onResize);
+
+// Bind click handler for demo import button
+const btnDemoImport = document.getElementById('btn-demo-import');
+if (btnDemoImport) {
+    btnDemoImport.addEventListener('click', async () => {
+        const homeLoading = document.getElementById('home-loading');
+        const importDetails = document.getElementById('import-details');
+        const homeStatus = document.getElementById('home-status');
+        const loadingText = document.getElementById('loading-text');
+        
+        if (loadingText) loadingText.textContent = '正在加载演示场景包 (正式赛道-区域赛.zip)...';
+        homeLoading.style.display = 'flex';
+        importDetails.style.display = 'none';
+        homeStatus.style.display = 'none';
+        
+        try {
+            const demoZipUrl = './' + encodeURIComponent('正式赛道-区域赛.zip');
+            let response = await fetch(demoZipUrl);
+            if (!response.ok) {
+                response = await fetch('./正式赛道-区域赛.zip');
+            }
+            if (!response.ok) {
+                throw new Error('无法读取根目录下的演示文件：正式赛道-区域赛.zip');
+            }
+
+            const zipBlob = await response.blob();
+            const file = new File([zipBlob], "正式赛道-区域赛.zip", { type: "application/zip" });
+            selectedFile = file;
+            
+            const selectedFileName = document.getElementById('selected-file-name');
+            const selectedFileSize = document.getElementById('selected-file-size');
+            if (selectedFileName) selectedFileName.textContent = selectedFile.name;
+            if (selectedFileSize) selectedFileSize.textContent = formatBytes(selectedFile.size);
+            
+            // Trigger import
+            const zipFiles = await window.JSZip.loadAsync(selectedFile);
+            const objectsJsonEntry = findObjectsJsonEntry(zipFiles.files);
+            if (!objectsJsonEntry) {
+                throw new Error('未在演示压缩包中找到 objects.json 文件！');
+            }
+            const objectsText = await objectsJsonEntry.file.async('string');
+            const objectsData = JSON.parse(objectsText);
+            
+            const zipBlobUrls = await buildZipBlobUrls(zipFiles.files, {
+                sceneRoot: objectsJsonEntry.sceneRoot,
+                createObjectURL: (blob) => URL.createObjectURL(blob)
+            });
+            
+            sessionStorage.setItem('tutorial_active', 'true');
+            
+            sceneApi.loadResources(zipBlobUrls, objectsData);
+        } catch (error) {
+            console.error(error);
+            homeLoading.style.display = 'none';
+            if (loadingText) loadingText.textContent = '正在解压并读取场景资源...';
+            showHomeStatus(`演示数据加载失败: ${error.message}`, true);
+        }
+    });
+}
