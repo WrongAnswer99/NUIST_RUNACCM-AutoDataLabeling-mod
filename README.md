@@ -71,13 +71,17 @@ XSmart_Car_MiscTools/
 
 本项目为纯前端应用，涉及使用 JSZip 进行本地客户端解包、Three.js 跨域加载 Blob 资源等，因此**必须在 Web 服务器环境**下运行，以规避浏览器的跨域安全限制（CORS）。
 
-### 方法一：使用 VS Code Live Server 插件（推荐）
+### 方法一：直接使用在线网站（推荐）
+
+访问 [https://autolabeling.cicada000.work](https://autolabeling.cicada000.work) 即可直接使用。
+
+### 方法二：使用 VS Code Live Server 插件
 1. 使用 VS Code 打开 `XSmart_Car_MiscTools` (或 `XSmart_Car_AutoDataLabeling`) 文件夹。
 2. 在 VS Code 插件市场搜索并安装 **Live Server** 插件。
 3. 在左侧文件树中右键点击 `index.html`，选择 **Open with Live Server**。
 4. 浏览器会自动打开 `http://127.0.0.1:5500/index.html`。
 
-### 方法二：使用 Python 快速启动本地服务器
+### 方法三：使用 Python 快速启动本地服务器
 在项目根目录（含有 `index.html` 的目录下）打开终端，运行：
 ```bash
 # Python 3
