@@ -409,7 +409,10 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             camPyInput.style.opacity = sceneState.lockExportY ? '0.5' : '1';
         });
 
-        exportZipButton.addEventListener('click', exportApi.exportSampleZip);
+        exportZipButton.addEventListener('click', () => {
+            syncMainViewToExport();
+            exportApi.exportSampleZip();
+        });
         exportTrajectoryZipButton?.addEventListener('click', exportApi.exportTrajectoryZip);
     }
 
