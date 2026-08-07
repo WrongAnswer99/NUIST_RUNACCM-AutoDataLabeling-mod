@@ -115,9 +115,12 @@ export async function buildZipBlobUrls(zipFiles = {}, {
         if (!fileEntry || fileEntry.dir || isMacMetadataPath(normalizedPath)) continue;
 
         const lowerBaseName = getBaseName(normalizedPath).toLowerCase();
+        const isImage = /\.(png|jpe?g)$/i.test(lowerBaseName);
+        const lowerPath = normalizedPath.toLowerCase();
         const isGlb = lowerBaseName.endsWith('.glb');
         const isMapImage = lowerBaseName.endsWith('.png') && lowerBaseName.includes('map');
-        if (!isGlb && !isMapImage) continue;
+        const isSkyboxImage = isImage && (lowerPath.includes('/skybox/') || lowerPath.startsWith('skybox/'));
+        if (!isGlb && !isMapImage && !isSkyboxImage) continue;
 
         const blob = await fileEntry.async('blob');
         const url = createObjectURL(blob);
@@ -149,4 +152,17 @@ export function resolveZipBlobUrl(zipBlobUrls, ...paths) {
     }
 
     return null;
+}
+
+function resolveSkyboxUrl(zipBlobUrls) {
+    const extensions = ['.png', '.jpg', '.jpeg'];
+    for (const ext of extensions) {
+        const url = resolveZipBlobUrl(zipBlobUrls, `skybox/skybox${ext}`);
+        if (url) return url;
+    }
+    return null;
+}
+
+export function findSkyboxUrls(zipBlobUrls) {
+    return resolveSkyboxUrl(zipBlobUrls);
 }

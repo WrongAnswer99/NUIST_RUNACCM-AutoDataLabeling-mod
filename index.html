@@ -94,6 +94,10 @@
                     <div id="pose-track-status" class="helper-text status-pill">未导入轨迹</div>
                 </div>
                 <div class="panel-card">
+                    <div class="section-title">视角移动</div>
+                    <p class="helper-text">除了使用轨迹文件定位视角，也可以使用 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 键自由移动，点击画布后即可操控，获得更个性化的拍摄角度</p>
+                </div>
+                <div class="panel-card">
                     <div class="section-title">地面底图 (map.png)</div>
                     <input id="map-image-file" type="file" accept="image/png,image/jpeg" hidden>
                     <div class="button-row">
@@ -101,6 +105,30 @@
                         <button type="button" id="map-image-reset">恢复默认底图</button>
                     </div>
                     <div id="map-image-status" class="helper-text status-pill">使用场景内置或默认底图</div>
+                </div>
+                <div class="panel-card">
+                    <div class="section-title">天空盒 (Skybox)</div>
+                    <select id="skybox-mode" class="skybox-mode-select" style="width:100%;margin-bottom:4px;">
+                        <option value="equirectangular">球面全景 (Equirectangular)</option>
+                        <option value="split">三分分割 (Sky / Walls / Ground)</option>
+                    </select>
+                    <p class="helper-text" style="margin-bottom:8px;">球面全景：上传等距柱状投影图，贴到球体上作为全景天空盒<br>三分分割：将图片竖切三等份，默认为上 1/3 为天空、中 1/3 为四周、下 1/3 为地面，可根据不同图片个性化调节</p>
+                    <div id="skybox-split-sliders" style="display:none;">
+                        <div class="slider-group">
+                            <div class="slider-label"><span>天空裁切 (%):</span><span id="val-sky-top">33</span>%</div>
+                            <input type="range" id="param-sky-top" min="1" max="50" step="1" value="33">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-label"><span>地面裁切 (%):</span><span id="val-sky-ground">33</span>%</div>
+                            <input type="range" id="param-sky-ground" min="1" max="50" step="1" value="33">
+                        </div>
+                    </div>
+                    <input id="skybox-file-input" type="file" accept="image/png,image/jpeg" hidden>
+                    <div class="button-row">
+                        <button type="button" id="skybox-import">上传天空盒 (1张)</button>
+                        <button type="button" id="skybox-reset">恢复默认背景</button>
+                    </div>
+                    <div id="skybox-status" class="helper-text status-pill">未设置天空盒，使用默认纯色背景</div>
                 </div>
                 <details class="advanced-group">
                     <summary>底图物理校准</summary>
@@ -191,9 +219,18 @@
 
             <section class="workflow-panel" data-workflow-page="export">
                 <h3>导出</h3>
-                <div class="field-block full-span">
-                    <label for="export-sample-name">Sample Name</label>
-                    <input id="export-sample-name" type="text" value="sample_0001">
+                <div class="field-block">
+                    <label for="export-sample-prefix">文件名前缀</label>
+                    <div style="display:flex;gap:4px;">
+                        <input id="export-sample-prefix" type="text" value="sample_" style="flex:1;">
+                        <input id="export-sample-sequence" type="text" value="0000" style="width:72px;text-align:center;" maxlength="8">
+                    </div>
+                </div>
+                <div class="field-block">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" id="export-auto-increment" checked>
+                        <span>导出当前样本时自动递增序号</span>
+                    </label>
                 </div>
                 <div class="panel-card">
                     <div class="section-title">导出范围</div>
@@ -251,8 +288,9 @@
                 <h3>相机设置</h3>
                 <div class="field-grid">
                     <div class="field-block"><label for="export-cam-px">Position X</label><input id="export-cam-px" type="number" step="0.01"></div>
-                    <div class="field-block"><label for="export-cam-py">Position Y</label><input id="export-cam-py" type="number" step="0.01"></div>
                     <div class="field-block"><label for="export-cam-pz">Position Z</label><input id="export-cam-pz" type="number" step="0.01"></div>
+                    <div class="field-block"><label for="export-cam-py">Position Y</label><div style="display:flex;gap:4px;"><input id="export-cam-py" type="number" step="0.01" style="flex:1;"><button type="button" id="lock-export-y" class="lock-btn" title="锁定 Y 坐标">🔓</button></div></div>
+                    <div class="field-block" style="display:flex;align-items:center;"><p class="helper-text" style="margin:0;">🔒 锁定后，点击"同步主视角"时 Position Y (高度)保持锁定值不变，可锁定此高度更快捷的导出所需数据集</p></div>
                     <div class="field-block"><label for="export-cam-fov">FOV</label><input id="export-cam-fov" type="number" step="0.1" min="10" max="120"></div>
                     <div class="field-block"><label for="export-rot-x">Euler X</label><input id="export-rot-x" type="number" step="0.1"></div>
                     <div class="field-block"><label for="export-rot-y">Euler Y</label><input id="export-rot-y" type="number" step="0.1"></div>

@@ -75,7 +75,8 @@ const sceneApi = createSceneModule(appState, mounts, {
 
 const exportApi = createExportModule(appState, sceneApi, {
     updateStatus: (message, state) => uiApi?.updateStatus(message, state),
-    refreshAvailability: () => uiApi?.refreshAvailability()
+    refreshAvailability: () => uiApi?.refreshAvailability(),
+    syncExportForm: () => uiApi?.syncExportFormFromState()
 });
 
 uiApi = createUIModule(appState, sceneApi, exportApi, mounts);

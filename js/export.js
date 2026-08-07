@@ -469,6 +469,16 @@ export function createExportModule(appState, sceneApi, statusApi) {
                 const archiveBlob = await zip.generateAsync({ type: 'blob' });
                 downloadBlob(archiveBlob, `${sampleName}.zip`);
                 statusApi.updateStatus(`导出完成：${sampleName}.zip`, 'success');
+
+                if (exportState.autoIncrementSequence) {
+                    const seq = exportState.sampleSequence;
+                    const num = parseInt(seq, 10);
+                    if (!isNaN(num)) {
+                        exportState.sampleSequence = String(num + 1).padStart(seq.length, '0');
+                        exportState.sampleName = exportState.samplePrefix + exportState.sampleSequence;
+                        statusApi.syncExportForm?.();
+                    }
+                }
             } catch (error) {
                 statusApi.updateStatus(`导出失败：${error.message}`, 'error');
             }

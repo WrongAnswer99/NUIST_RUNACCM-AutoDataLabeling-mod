@@ -167,7 +167,9 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
 
     function syncExportFormFromState() {
         const arCameraPosition = sceneToArVector3(exportState.camera.position);
-        document.getElementById('export-sample-name').value = exportState.sampleName;
+        document.getElementById('export-sample-prefix').value = exportState.samplePrefix;
+        document.getElementById('export-sample-sequence').value = exportState.sampleSequence;
+        document.getElementById('export-auto-increment').checked = exportState.autoIncrementSequence;
         document.getElementById('export-aspect-preset').value = exportState.resolution.aspectPreset;
         document.getElementById('export-width').value = exportState.resolution.width;
         document.getElementById('export-height').value = exportState.resolution.height;
@@ -307,7 +309,6 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             Number.isFinite(rz) ? rz : exportState.camera.rotation.z
         );
         exportState.camera.fov = Number.isFinite(fov) ? Math.min(120, Math.max(10, fov)) : exportState.camera.fov;
-        syncExportFormFromState();
         sceneApi.requestExportPreview();
     }
 
@@ -319,6 +320,12 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             sceneApi.camera.rotation.z * 180 / Math.PI
         );
         exportState.camera.fov = sceneApi.camera.fov;
+
+        if (sceneState.lockExportY) {
+            const scenePositionY = arToSceneVector3(0, sceneState.lockedExportYValue, 0).y;
+            exportState.camera.position.y = scenePositionY;
+        }
+
         syncExportFormFromState();
         sceneApi.requestExportPreview();
     }
@@ -343,9 +350,21 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         });
     }
 
+    function updateSampleName() {
+        exportState.sampleName = exportState.samplePrefix + exportState.sampleSequence;
+    }
+
     function bindExportFormEvents() {
-        document.getElementById('export-sample-name').addEventListener('input', (event) => {
-            exportState.sampleName = event.target.value;
+        document.getElementById('export-sample-prefix').addEventListener('input', (event) => {
+            exportState.samplePrefix = event.target.value;
+            updateSampleName();
+        });
+        document.getElementById('export-sample-sequence').addEventListener('input', (event) => {
+            exportState.sampleSequence = event.target.value;
+            updateSampleName();
+        });
+        document.getElementById('export-auto-increment').addEventListener('change', (event) => {
+            exportState.autoIncrementSequence = event.target.checked;
         });
 
         document.getElementById('export-aspect-preset').addEventListener('change', (event) => {
@@ -376,6 +395,20 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
 
         document.getElementById('sync-main-view').addEventListener('click', syncMainViewToExport);
         document.getElementById('reset-export-camera').addEventListener('click', resetExportCamera);
+
+        const lockBtn = document.getElementById('lock-export-y');
+        const camPyInput = document.getElementById('export-cam-py');
+        lockBtn.addEventListener('click', () => {
+            sceneState.lockExportY = !sceneState.lockExportY;
+            if (sceneState.lockExportY) {
+                sceneState.lockedExportYValue = parseFloat(camPyInput.value) || 0;
+            }
+            lockBtn.textContent = sceneState.lockExportY ? '🔒' : '🔓';
+            lockBtn.classList.toggle('locked', sceneState.lockExportY);
+            camPyInput.readOnly = sceneState.lockExportY;
+            camPyInput.style.opacity = sceneState.lockExportY ? '0.5' : '1';
+        });
+
         exportZipButton.addEventListener('click', exportApi.exportSampleZip);
         exportTrajectoryZipButton?.addEventListener('click', exportApi.exportTrajectoryZip);
     }
@@ -510,6 +543,84 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         });
     }
 
+    function bindSkyboxEvents() {
+        const fileInput = document.getElementById('skybox-file-input');
+        const importButton = document.getElementById('skybox-import');
+        const resetButton = document.getElementById('skybox-reset');
+        const statusEl = document.getElementById('skybox-status');
+        const modeSelect = document.getElementById('skybox-mode');
+        const splitSliders = document.getElementById('skybox-split-sliders');
+        const skyTopSlider = document.getElementById('param-sky-top');
+        const skyGroundSlider = document.getElementById('param-sky-ground');
+        const valSkyTop = document.getElementById('val-sky-top');
+        const valSkyGround = document.getElementById('val-sky-ground');
+
+        function updateSplitSlidersVisibility() {
+            splitSliders.style.display = modeSelect.value === 'split' ? 'block' : 'none';
+        }
+        updateSplitSlidersVisibility();
+
+        modeSelect.addEventListener('change', () => {
+            sceneState.skyboxMode = modeSelect.value;
+            updateSplitSlidersVisibility();
+            // If switching to split mode and we have an original image, rebuild
+            if (modeSelect.value === 'split' && sceneState.skyboxOriginalImage) {
+                sceneApi.rebuildSplitSkybox();
+            }
+        });
+
+        skyTopSlider.addEventListener('input', () => {
+            sceneState.skyTopPercent = parseInt(skyTopSlider.value);
+            valSkyTop.textContent = skyTopSlider.value;
+            if (sceneState.skyboxMode === 'split') {
+                sceneApi.rebuildSplitSkybox();
+            }
+        });
+
+        skyGroundSlider.addEventListener('input', () => {
+            sceneState.skyGroundPercent = parseInt(skyGroundSlider.value);
+            valSkyGround.textContent = skyGroundSlider.value;
+            if (sceneState.skyboxMode === 'split') {
+                sceneApi.rebuildSplitSkybox();
+            }
+        });
+
+        importButton.addEventListener('click', () => {
+            if (!sceneState.resourcesReady) {
+                updateStatus('请先导入场景 ZIP 压缩包，然后再上传天空盒。', 'error');
+                return;
+            }
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const files = Array.from(event.target.files || []);
+            if (files.length !== 1) {
+                statusEl.textContent = `需要选择 1 张图片（当前选择了 ${files.length} 张）`;
+                updateStatus('天空盒上传失败：必须选择 1 张图片。', 'error');
+            } else {
+                const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+                if (imageFiles.length !== 1) {
+                    statusEl.textContent = '请选择 1 张图片文件';
+                    updateStatus('天空盒上传失败：文件必须为图片格式。', 'error');
+                } else {
+                    sceneState.skyboxMode = modeSelect.value;
+                    sceneApi.loadSkyboxFromFiles(imageFiles);
+                    const modeLabel = sceneState.skyboxMode === 'split' ? '三分分割' : '球面全景';
+                    statusEl.textContent = `已加载天空盒（${modeLabel}）`;
+                    updateStatus('天空盒已成功加载并应用到场景。', 'success');
+                }
+            }
+            fileInput.value = '';
+        });
+
+        resetButton.addEventListener('click', () => {
+            sceneApi.resetSkybox();
+            statusEl.textContent = '已恢复默认纯色背景';
+            updateStatus('天空盒已重置，恢复为默认纯色背景。', 'success');
+        });
+    }
+
     function initialize() {
         bindWorkflowPageEvents();
         bindPreviewModeButtons();
@@ -517,6 +628,7 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         bindMaskControls();
         bindPoseTrackEvents();
         bindMapImageEvents();
+        bindSkyboxEvents();
         syncExportFormFromState();
         updateSemanticLabelEditor();
         updateInstanceLabelList();

@@ -402,10 +402,33 @@
 	        }
 
 	        .camera-action-group .button-row {
-	            gap: 8px;
-	        }
+            gap: 8px;
+        }
 
-	        .label-settings-group {
+        .lock-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--panel-border);
+            color: var(--panel-text);
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            line-height: 1;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+
+        .lock-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .lock-btn.locked {
+            background: rgba(0, 255, 170, 0.12);
+            border-color: var(--panel-accent);
+            color: var(--panel-accent);
+        }
+
+        .label-settings-group {
 	            margin-top: 2px;
 	        }
 

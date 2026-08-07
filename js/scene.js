@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MAP_KEY, MASK_DOWNSAMPLE_RATIO, MASK_MIN_DOWNSAMPLED_SIZE, MASK_PALETTE, arToSceneVector3 } from './state.js';
 import { extractLapCourseFromObjects } from './pose-track-helpers.js';
-import { resolveZipBlobUrl } from './zip-import.js';
+import { resolveZipBlobUrl, findSkyboxUrls } from './zip-import.js';
 import {
     extractAlphaMaskFromImageData,
     extractConnectedComponentsFromMask
@@ -41,6 +41,13 @@ export function createSceneModule(appState, mounts, hooks = {}) {
     exportRenderer.setPixelRatio(1);
 
     const exportCamera = new THREE.PerspectiveCamera(exportState.camera.fov, 1, 0.01, 1000);
+
+    const keys = {};
+    const MOVE_SPEED = 2.0;
+
+    renderer.domElement.addEventListener('keydown', (event) => { keys[event.code] = true; });
+    renderer.domElement.addEventListener('keyup', (event) => { keys[event.code] = false; });
+    renderer.domElement.tabIndex = 0;
 
     const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
     scene.add(gridHelper);
@@ -584,6 +591,9 @@ export function createSceneModule(appState, mounts, hooks = {}) {
 
     function applyMainSceneMode() {
         scene.background = new THREE.Color(sceneState.isMaskMode ? 0x000000 : 0x0a0a0a);
+        if (sceneState.skyboxMesh) {
+            sceneState.skyboxMesh.visible = !sceneState.isMaskMode;
+        }
         gridHelper.visible = !sceneState.isMaskMode;
 
         const currentLap = appState.scene.currentLapFilter || 'all';
@@ -608,11 +618,13 @@ export function createSceneModule(appState, mounts, hooks = {}) {
     }
 
     function applySceneVariant(variant, forExport = false) {
+        scene.background = variant === 'rgb' ? new THREE.Color(0x0a0a0a) : new THREE.Color(0x000000);
+        if (sceneState.skyboxMesh) {
+            sceneState.skyboxMesh.visible = (variant === 'rgb');
+        }
         if (variant === 'rgb') {
-            scene.background = new THREE.Color(0x0a0a0a);
             gridHelper.visible = true;
         } else {
-            scene.background = new THREE.Color(0x000000);
             gridHelper.visible = false;
         }
 
@@ -829,6 +841,185 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         antialiasedTrackShader.uniforms.uEdgeWidthMultiplier.value = edgeAA;
         syncTrackMaskMaterial(antialiasedTrackShader);
         updateMaskTexture(blur);
+    }
+
+    function createSkyboxMesh(image) {
+        const geometry = new THREE.SphereGeometry(500, 64, 32);
+        const texture = new THREE.Texture(image);
+        texture.needsUpdate = true;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, toneMapped: false });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = -1;
+        return mesh;
+    }
+
+    function createSplitSkyboxMesh(image) {
+        const imgWidth = image.width;
+        const imgHeight = image.height;
+        const topPercent = sceneState.skyTopPercent / 100;
+        const groundPercent = sceneState.skyGroundPercent / 100;
+        const skyBandHeight = Math.max(1, Math.floor(imgHeight * topPercent));
+        const groundBandHeight = Math.max(1, Math.floor(imgHeight * groundPercent));
+        const wallBandHeight = Math.max(1, imgHeight - skyBandHeight - groundBandHeight);
+
+        function createBandCanvas(yOffset, bandH) {
+            const c = document.createElement('canvas');
+            c.width = imgWidth;
+            c.height = bandH;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(image, 0, yOffset, imgWidth, bandH, 0, 0, imgWidth, bandH);
+            return c;
+        }
+
+        const skyCanvas = createBandCanvas(0, skyBandHeight);
+        const wallCanvas = createBandCanvas(skyBandHeight, wallBandHeight);
+        const groundCanvas = createBandCanvas(skyBandHeight + wallBandHeight, groundBandHeight);
+
+        function toTexture(canvas) {
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            return tex;
+        }
+
+        const skyTex = toTexture(skyCanvas);
+        const wallTex = toTexture(wallCanvas);
+        const groundTex = toTexture(groundCanvas);
+
+        const splitCanvases = { sky: skyCanvas, wall: wallCanvas, ground: groundCanvas };
+        const splitTextures = { sky: skyTex, wall: wallTex, ground: groundTex };
+
+        const geometry = new THREE.BoxGeometry(500, 500, 500);
+        // Three.js BoxGeometry material order: 0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z, 5:-Z
+        const materials = [
+            new THREE.MeshBasicMaterial({ map: wallTex, side: THREE.BackSide, toneMapped: false }),  // +X right
+            new THREE.MeshBasicMaterial({ map: wallTex, side: THREE.BackSide, toneMapped: false }),  // -X left
+            new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, toneMapped: false }),   // +Y top
+            new THREE.MeshBasicMaterial({ map: groundTex, side: THREE.BackSide, toneMapped: false }), // -Y bottom
+            new THREE.MeshBasicMaterial({ map: wallTex, side: THREE.BackSide, toneMapped: false }),  // +Z front
+            new THREE.MeshBasicMaterial({ map: wallTex, side: THREE.BackSide, toneMapped: false }),   // -Z back
+        ];
+
+        const mesh = new THREE.Mesh(geometry, materials);
+        mesh.renderOrder = -1;
+        mesh.userData.splitCanvases = splitCanvases;
+        mesh.userData.splitTextures = splitTextures;
+        return mesh;
+    }
+
+    function createSkyboxByMode(image, mode) {
+        if (mode === 'split') {
+            return createSplitSkyboxMesh(image);
+        }
+        return createSkyboxMesh(image);
+    }
+
+    function clearSkybox() {
+        if (sceneState.skyboxMesh) {
+            scene.remove(sceneState.skyboxMesh);
+            sceneState.skyboxMesh.geometry.dispose();
+            // Handle materials (sphere mode has 1, split mode has 6)
+            const materials = Array.isArray(sceneState.skyboxMesh.material)
+                ? sceneState.skyboxMesh.material
+                : [sceneState.skyboxMesh.material];
+            materials.forEach((mat) => {
+                if (mat.map) mat.map.dispose();
+                mat.dispose();
+            });
+            // Dispose split-mode textures stored in userData
+            if (sceneState.skyboxMesh.userData.splitTextures) {
+                const st = sceneState.skyboxMesh.userData.splitTextures;
+                if (st.sky) st.sky.dispose();
+                if (st.wall) st.wall.dispose();
+                if (st.ground) st.ground.dispose();
+            }
+            sceneState.skyboxMesh = null;
+        }
+        if (sceneState.skyboxUrl) {
+            URL.revokeObjectURL(sceneState.skyboxUrl);
+            sceneState.skyboxUrl = null;
+        }
+        sceneState.skyboxTexture = null;
+    }
+
+    function loadSkyboxFromZip(zipBlobUrls) {
+        clearSkybox();
+        const urls = findSkyboxUrls(zipBlobUrls);
+        if (!urls) return;
+
+        beginAssetLoad();
+        const imageLoader = new THREE.ImageLoader();
+        imageLoader.load(urls, (image) => {
+            const mesh = createSkyboxByMode(image, sceneState.skyboxMode);
+            sceneState.skyboxMesh = mesh;
+            sceneState.skyboxTexture = image;
+            sceneState.skyboxOriginalImage = image;
+            scene.add(mesh);
+            applyMainSceneMode();
+            requestExportPreview();
+            completeAssetLoad();
+        }, undefined, () => {
+            hooks.onStatusMessage?.('天空盒加载失败。', 'error');
+            completeAssetLoad();
+        });
+    }
+
+    function loadSkyboxFromFiles(files) {
+        clearSkybox();
+        if (!files || files.length !== 1) return;
+
+        const blobUrl = URL.createObjectURL(files[0]);
+        beginAssetLoad();
+        const imageLoader = new THREE.ImageLoader();
+        imageLoader.load(blobUrl, (image) => {
+            const mesh = createSkyboxByMode(image, sceneState.skyboxMode);
+            sceneState.skyboxMesh = mesh;
+            sceneState.skyboxTexture = image;
+            sceneState.skyboxUrl = blobUrl;
+            sceneState.skyboxOriginalImage = image;
+            scene.add(mesh);
+            applyMainSceneMode();
+            requestExportPreview();
+            completeAssetLoad();
+        }, undefined, () => {
+            URL.revokeObjectURL(blobUrl);
+            hooks.onStatusMessage?.('天空盒加载失败。', 'error');
+            completeAssetLoad();
+        });
+    }
+
+    function rebuildSplitSkybox() {
+        if (!sceneState.skyboxOriginalImage || sceneState.skyboxMode !== 'split') return;
+        if (!sceneState.skyboxMesh) return;
+
+        scene.remove(sceneState.skyboxMesh);
+        sceneState.skyboxMesh.geometry.dispose();
+        const materials = Array.isArray(sceneState.skyboxMesh.material)
+            ? sceneState.skyboxMesh.material
+            : [sceneState.skyboxMesh.material];
+        materials.forEach((mat) => {
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+        });
+        if (sceneState.skyboxMesh.userData.splitTextures) {
+            const st = sceneState.skyboxMesh.userData.splitTextures;
+            if (st.sky) st.sky.dispose();
+            if (st.wall) st.wall.dispose();
+            if (st.ground) st.ground.dispose();
+        }
+
+        const mesh = createSplitSkyboxMesh(sceneState.skyboxOriginalImage);
+        sceneState.skyboxMesh = mesh;
+        scene.add(mesh);
+        applyMainSceneMode();
+        requestExportPreview();
+    }
+
+    function resetSkybox() {
+        sceneState.skyboxOriginalImage = null;
+        clearSkybox();
+        applyMainSceneMode();
+        requestExportPreview();
     }
 
     function applyTransform(threeObject, data) {
@@ -1066,6 +1257,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         sceneState.pendingAssetLoads = 0;
         sceneState.currentLapFilter = 'all';
         sceneState.lapCourse = null;
+        clearSkybox();
 
         // Reset UI filter dropdown value to default 'all'
         const lapFilterEl = document.getElementById('param-lap-filter');
@@ -1085,6 +1277,10 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         const textureLoader = new THREE.TextureLoader();
         const gltfLoader = new GLTFLoader();
 
+        if (zipBlobUrls) {
+            loadSkyboxFromZip(zipBlobUrls);
+        }
+
         beginAssetLoad();
         const mapPath = resolveZipBlobUrl(zipBlobUrls, 'map.png', 'models/map.png')
             || appState.defaultMapBlobUrl
@@ -1103,7 +1299,9 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             sceneState.originalMapMaterial = new THREE.MeshStandardMaterial({
                 map: texture,
                 side: THREE.DoubleSide,
-                roughness: 0.8
+                roughness: 0.8,
+                transparent: true,
+                depthWrite: true
             });
 
             sceneState.loadedImageElement = texture.image;
@@ -1269,6 +1467,26 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             }
         });
 
+        // WASD keyboard movement in camera's horizontal plane
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+        const moveDistance = MOVE_SPEED * deltaTime;
+        const delta = new THREE.Vector3();
+        if (keys['KeyW']) delta.addScaledVector(forward, moveDistance);
+        if (keys['KeyS']) delta.addScaledVector(forward, -moveDistance);
+        if (keys['KeyD']) delta.addScaledVector(right, moveDistance);
+        if (keys['KeyA']) delta.addScaledVector(right, -moveDistance);
+        if (keys['Space']) delta.y += moveDistance;
+        if (keys['ShiftLeft'] || keys['ShiftRight']) delta.y -= moveDistance;
+        if (delta.lengthSq() > 0) {
+            camera.position.add(delta);
+            controls.target.add(delta);
+        }
+
         controls.update();
         renderer.render(scene, camera);
     }
@@ -1314,7 +1532,10 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             isSemanticEnabledForExport,
             encodeIdHex,
             encodeDetectionHex,
-            updateObjectVisibilityByLap
+            updateObjectVisibilityByLap,
+            loadSkyboxFromFiles,
+            resetSkybox,
+            rebuildSplitSkybox
         };
     }
 

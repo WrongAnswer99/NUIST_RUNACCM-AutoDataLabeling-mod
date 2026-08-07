@@ -69,6 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
             onHighlightStarted: () => switchTab('resources')
         },
         {
+            element: '#viewport-shell',
+            popover: {
+                title: '⌨️ WASD 键盘自由移动',
+                description: '除了鼠标操控，点击画布获得焦点后，可使用键盘 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 自由移动相机，<kbd>Space</kbd> / <kbd>Shift</kbd> 上下升降，获得更个性化的拍摄角度。',
+                side: 'bottom',
+                align: 'center'
+            },
+            onHighlightStarted: () => switchTab('resources')
+        },
+        {
             element: 'section[data-workflow-page="resources"]',
             popover: {
                 title: '📂 资源控制面板',
@@ -92,7 +102,17 @@ document.addEventListener('DOMContentLoaded', () => {
             element: '#map-image-import',
             popover: {
                 title: '🗺️ 地面底图上传',
-                description: '除了 ZIP 内置的底图，您还可以上传自定义底图（PNG/JPG）进行道路遮罩覆盖。点击“恢复默认底图”可随时恢复。',
+                description: '除了 ZIP 内置的底图，您还可以上传自定义底图（PNG/JPG）进行道路遮罩覆盖。点击"恢复默认底图"可随时恢复。',
+                side: 'bottom',
+                align: 'center'
+            },
+            onHighlightStarted: () => switchTab('resources')
+        },
+        {
+            element: '#skybox-import',
+            popover: {
+                title: '🌌 天空盒 (Skybox)',
+                description: '可为场景添加天空盒背景，提高 AI 模型在多样化场景下的抗干扰能力。支持<b>球面全景（上传 1 张等距柱状投影图）</b>和<b>三分分割（图片竖切为天空/四周/地面）</b>两种模式，还可拖动滑块调节三段裁切比例。',
                 side: 'bottom',
                 align: 'center'
             },
@@ -187,9 +207,19 @@ document.addEventListener('DOMContentLoaded', () => {
             element: '#sync-main-view',
             popover: {
                 title: '🔗 同步主视角',
-                description: '在主 3D 视窗中按住<b>左键旋转</b>、<b>右键平移</b>、<b>滚轮缩放</b>调整好您满意的视场后，点击“同步主视角”即可将此自由视角精确复制赋给导出相机！',
+                description: '在主 3D 视窗中按住<b>左键旋转</b>、<b>右键平移</b>、<b>滚轮缩放</b>调整好您满意的视场后，点击"同步主视角"即可将此自由视角精确复制赋给导出相机！',
                 side: 'bottom',
                 align: 'left'
+            },
+            onHighlightStarted: () => switchTab('camera')
+        },
+        {
+            element: '#lock-export-y',
+            popover: {
+                title: '🔒 Y 轴高度锁定',
+                description: '点击 Position Y 旁的锁按钮可锁定导出相机的高度。锁定后每次同步主视角，X/Z/旋转会正常更新，但 Y 高度保持不变，方便从不同角度批量导出固定高度的图像（如模拟车载摄像头）。',
+                side: 'left',
+                align: 'start'
             },
             onHighlightStarted: () => switchTab('camera')
         },
@@ -214,10 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
             onHighlightStarted: () => switchTab('camera')
         },
         {
-            element: '#export-sample-name',
+            element: '#export-sample-prefix',
             popover: {
-                title: '🏷️ 样本名称前缀',
-                description: '输入您需要导出的数据集文件前缀名，例如 <code>sample_0001</code>。',
+                title: '🏷️ 导出文件名',
+                description: '设置文件名前缀和序号，例如 <code>sample_0000</code>。勾选自动递增后，每次导出序号自动 +1。',
                 side: 'bottom',
                 align: 'left'
             },

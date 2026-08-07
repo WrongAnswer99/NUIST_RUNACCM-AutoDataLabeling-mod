@@ -93,14 +93,26 @@ export function createAppState() {
             originalMapMaterial: null,
             originalMapPath: null,
             trackRecord: null,
-            lapCourse: null
+            lapCourse: null,
+            skyboxTexture: null,
+            skyboxUrl: null,
+            skyboxMesh: null,
+            skyboxMode: 'equirectangular',
+            skyboxOriginalImage: null,
+            skyTopPercent: 33,
+            skyGroundPercent: 33,
+            lockExportY: false,
+            lockedExportYValue: 0
         },
         ui: {
             activeWorkflowPage: 'resources'
         },
         exportState: {
             previewMode: 'rgb',
-            sampleName: 'sample_0001',
+            sampleName: 'sample_0000',
+            samplePrefix: 'sample_',
+            sampleSequence: '0000',
+            autoIncrementSequence: true,
             annotationPixelThreshold: 20,
             resolution: {
                 width: 640,

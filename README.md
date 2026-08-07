@@ -1,3 +1,20 @@
+# XSmart_Car_AutoDataLabeling（魔改版）
+
+> **本项目基于 [Cicada000/XSmart_Car_AutoDataLabeling](https://github.com/Cicada000/XSmart_Car_AutoDataLabeling)（GPLv3）二次开发。**
+>
+> 主要改动：
+> - 新增天空盒系统（球面全景 & 三分分割模式，上传单张图即可）
+> - 新增 WASD 键盘自由移动，配合鼠标操控获得更灵活的视角
+> - 新增 Y 轴高度锁定，批量导出时保持固定高度
+> - 导出文件名支持前缀 + 自动递增序号（0000 → 0001 → …）
+> - 修复地面底图透明通道渲染为黑色的问题
+> - 修复相机坐标输入框无法正常键入的问题
+> - 新手教程扩展，覆盖上述新功能
+>
+> 详见 **[changelog.md](changelog.md)**。
+
+---
+
 # XSmart_Car_MiscTools - AutoDataLabeling
 
 这是一个基于 Web 的智能车赛道 3D 数据可视化与自动标注工具。项目利用 Three.js 构建 3D 渲染管线，实现了赛道场景 ZIP 导入、多圈数元素过滤、车辆轨迹随动模拟、像素级精准包围盒提取，以及一键导出符合标准深度学习训练格式（COCO 标注、语义/实例分割掩码、相机参数）的数据集。
