@@ -634,6 +634,13 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         });
     }
 
+    function bindGridToggle() {
+        const checkbox = document.getElementById('grid-toggle');
+        checkbox.addEventListener('change', () => {
+            sceneApi.toggleGridVisibility(checkbox.checked);
+        });
+    }
+
     function initialize() {
         bindWorkflowPageEvents();
         bindPreviewModeButtons();
@@ -642,6 +649,7 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         bindPoseTrackEvents();
         bindMapImageEvents();
         bindSkyboxEvents();
+        bindGridToggle();
         syncExportFormFromState();
         updateSemanticLabelEditor();
         updateInstanceLabelList();

@@ -78,6 +78,7 @@ export function createAppState() {
             nextSemanticId: 1,
             nextInstanceId: 1,
             isMaskMode: false,
+            gridVisible: false,
             exportInProgress: false,
             resourcesReady: false,
             pendingAssetLoads: 0,

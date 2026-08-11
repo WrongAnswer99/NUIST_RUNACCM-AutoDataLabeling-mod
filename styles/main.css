@@ -428,6 +428,21 @@
             color: var(--panel-accent);
         }
 
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            color: var(--panel-text);
+        }
+
+        .toggle-row input[type="checkbox"] {
+            accent-color: var(--panel-accent);
+            width: 16px;
+            height: 16px;
+        }
+
         .label-settings-group {
 	            margin-top: 2px;
 	        }

@@ -594,7 +594,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
         if (sceneState.skyboxMesh) {
             sceneState.skyboxMesh.visible = !sceneState.isMaskMode;
         }
-        gridHelper.visible = !sceneState.isMaskMode;
+        gridHelper.visible = sceneState.gridVisible && !sceneState.isMaskMode;
 
         const currentLap = appState.scene.currentLapFilter || 'all';
 
@@ -623,7 +623,7 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             sceneState.skyboxMesh.visible = (variant === 'rgb');
         }
         if (variant === 'rgb') {
-            gridHelper.visible = true;
+            gridHelper.visible = sceneState.gridVisible;
         } else {
             gridHelper.visible = false;
         }
@@ -1535,7 +1535,15 @@ export function createSceneModule(appState, mounts, hooks = {}) {
             updateObjectVisibilityByLap,
             loadSkyboxFromFiles,
             resetSkybox,
-            rebuildSplitSkybox
+            rebuildSplitSkybox,
+            toggleGridVisibility: (visible) => {
+                sceneState.gridVisible = visible;
+                if (sceneState.isMaskMode) {
+                    gridHelper.visible = false;
+                } else {
+                    gridHelper.visible = visible;
+                }
+            }
         };
     }
 
