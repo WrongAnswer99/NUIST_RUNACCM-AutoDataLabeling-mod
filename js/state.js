@@ -40,7 +40,7 @@ export function computeTargetFromPositionEuler(position, rotationDegrees, distan
 }
 
 export function createAppState() {
-    const defaultExportScenePosition = arToSceneVector3(0.8, 0.16, -0.2);
+    const defaultExportScenePosition = arToSceneVector3(0.8, 0.14, -0.2);
     const defaultExportEulerDegrees = new THREE.Vector3(-180, 0, -180);
 
     const defaultMainTarget = computeTargetFromPositionEuler(

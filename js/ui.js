@@ -414,6 +414,16 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             exportApi.exportSampleZip();
         });
         exportTrajectoryZipButton?.addEventListener('click', exportApi.exportTrajectoryZip);
+
+        // 按 E 键快速导出当前样本
+        sceneApi.renderer.domElement.addEventListener('keydown', (event) => {
+            if (event.key === 'e' || event.key === 'E') {
+                // 避免在输入框等元素中触发
+                if (document.activeElement !== sceneApi.renderer.domElement) return;
+                syncMainViewToExport();
+                exportApi.exportSampleZip();
+            }
+        });
     }
 
     function bindPoseTrackEvents() {
