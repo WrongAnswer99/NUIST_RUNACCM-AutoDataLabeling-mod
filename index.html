@@ -85,13 +85,17 @@
                     <p class="helper-text">场景 ZIP 已加载。可在这里校准底图比例和中心点。</p>
                 </div>
                 <div class="panel-card">
-                    <div class="section-title">轨迹文件</div>
+                    <div class="section-title">轨迹</div>
                     <input id="pose-track-file" type="file" accept=".txt,text/plain" hidden>
                     <div class="button-row">
                         <button type="button" id="pose-track-import">导入轨迹文件</button>
                         <button type="button" id="pose-track-clear">清空轨迹</button>
                     </div>
                     <div id="pose-track-status" class="helper-text status-pill">未导入轨迹</div>
+                    <label class="toggle-row">
+                        <input type="checkbox" id="pose-track-marker-toggle" />
+                        <span>显示轨迹标记</span>
+                    </label>
                 </div>
                 <div class="panel-card">
                     <div class="section-title">视角移动</div>

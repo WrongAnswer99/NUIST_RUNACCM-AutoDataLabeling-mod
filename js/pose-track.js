@@ -36,6 +36,12 @@ export function createPoseTrackModule(appState, sceneApi, uiApi) {
         }
     }
 
+    function setShowMarker(visible) {
+        poseTrack.showMarker = visible;
+        setMarkerVisible(visible);
+        sceneApi.requestExportPreview();
+    }
+
     function ensureMarker() {
         if (poseTrack.marker) return poseTrack.marker;
         const geometry = new THREE.SphereGeometry(0.05, 24, 24);
@@ -55,7 +61,7 @@ export function createPoseTrackModule(appState, sceneApi, uiApi) {
 
         const marker = ensureMarker();
         marker.position.copy(arToSceneVector3(frame.xMeters, 0.03, frame.zMeters));
-        marker.visible = true;
+        marker.visible = poseTrack.showMarker;
 
         exportState.camera.position.copy(
             arToSceneVector3(frame.xMeters, exportState.camera.position.y, frame.zMeters)
@@ -131,6 +137,7 @@ export function createPoseTrackModule(appState, sceneApi, uiApi) {
     return {
         applyFrame,
         loadFramesFromText,
-        clearTrack
+        clearTrack,
+        setShowMarker
     };
 }

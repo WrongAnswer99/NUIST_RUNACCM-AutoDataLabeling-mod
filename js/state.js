@@ -132,7 +132,8 @@ export function createAppState() {
             frames: [],
             currentIndex: 0,
             loaded: false,
-            marker: null
+            marker: null,
+            showMarker: false
         }
     };
 }

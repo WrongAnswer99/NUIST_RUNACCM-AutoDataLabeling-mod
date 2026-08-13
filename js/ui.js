@@ -431,6 +431,7 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
         const importButton = document.getElementById('pose-track-import');
         const clearButton = document.getElementById('pose-track-clear');
         const progressEl = document.getElementById('pose-track-progress');
+        const markerToggle = document.getElementById('pose-track-marker-toggle');
 
         importButton.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', async (event) => {
@@ -457,6 +458,10 @@ export function createUIModule(appState, sceneApi, exportApi, mounts) {
             const index = parseInt(event.target.value, 10);
             if (!Number.isFinite(index)) return;
             poseTrack.api.applyFrame(index);
+        });
+
+        markerToggle.addEventListener('change', () => {
+            poseTrack.api.setShowMarker(markerToggle.checked);
         });
     }
 
